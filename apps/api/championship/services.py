@@ -120,7 +120,11 @@ def recalculate(season: Season) -> dict:
         if not data.results:
             continue
         cuts = standings_by_event(
-            data.results, data.registered, config.tiebreak_order, event_numbers=data.event_numbers
+            data.results,
+            data.registered,
+            config.tiebreak_order,
+            event_numbers=data.event_numbers,
+            podium=config.podium_positions,
         )
         rows = []
         for number, standing in cuts.items():

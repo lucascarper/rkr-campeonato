@@ -154,7 +154,13 @@ def _dashboard(season, category, start, end):
     config = services.season_config(season)
     events = [n for n in data.event_numbers if (start is None or n >= start) and (end is None or n <= end)]
     results = [r for r in data.results if r.event_number in events]
-    cuts = standings_by_event(data.results, data.registered, config.tiebreak_order, data.event_numbers)
+    cuts = standings_by_event(
+        data.results,
+        data.registered,
+        config.tiebreak_order,
+        data.event_numbers,
+        podium=config.podium_positions,
+    )
     cuts = {n: rows for n, rows in cuts.items() if n in events}
     board = build_dashboard(
         results,
@@ -162,6 +168,7 @@ def _dashboard(season, category, start, end):
         total_races=sum(data.total_race_slots.get(n, 0) for n in events),
         cuts=cuts,
         top_n=config.consistency_top_n,
+        podium=config.podium_positions,
         availability=data.availability,
     )
     board.pop("driver_stats")
@@ -173,6 +180,7 @@ def _dashboard(season, category, start, end):
         "range": {"from": events[0] if events else None, "to": events[-1] if events else None},
         "all_events": [_event_payload(event_map[n]) for n in data.event_numbers if n in event_map],
         "availability": data.availability,
+        "podium_positions": config.podium_positions,
         "drivers": {d.id: services.driver_payload(d) for d in services.drivers_by_id(ids).values()},
         **board,
     }
@@ -206,7 +214,7 @@ def _driver(season, category, driver, upto_param):
     )
     absences = find_absences(results, data.total_race_slots, upto=upto)
     with_discard, discarded = apply_discards(results, config.discards, absences, config.discard_absences)
-    stats = driver_stats(results, config.consistency_top_n)
+    stats = driver_stats(results, config.consistency_top_n, config.podium_positions)
 
     standing = {
         s.upto_event: s for s in Standing.objects.filter(season=season, category=category, driver=driver)

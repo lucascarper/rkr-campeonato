@@ -133,6 +133,9 @@ class SeasonConfig(models.Model):
         default=True, help_text="Corridas que o piloto não disputou também podem ser descartadas (valem 0)"
     )
     consistency_top_n = models.PositiveSmallIntegerField(default=5)
+    podium_positions = models.PositiveSmallIntegerField(
+        default=5, help_text="Quantos primeiros colocados contam como pódio (RKR: até o 5º)"
+    )
     tiebreak_order = models.JSONField(default=default_tiebreak)
     pole_bonus = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     fastest_lap_bonus = models.DecimalField(max_digits=5, decimal_places=2, default=0)

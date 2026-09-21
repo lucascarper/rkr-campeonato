@@ -11,6 +11,7 @@ type Rules = {
   discards: number;
   discard_absences: boolean;
   consistency_top_n: number;
+  podium_positions: number;
   tiebreak_order: string[];
   tiebreak_options: Record<string, string>;
   pole_bonus: number;
@@ -132,6 +133,15 @@ export default function RulesPage() {
             </span>
           </span>
         </label>
+        <Field label="Pódio até a posição" hint="RKR: 5 (do 1º ao 5º lugar).">
+          <input
+            type="number"
+            min={1}
+            value={rules.podium_positions}
+            onChange={(e) => set("podium_positions", num(e.target.value))}
+            className={inputClass}
+          />
+        </Field>
         <Field label="Consistência: top N" hint="Percentual de corridas entre os N primeiros.">
           <input
             type="number"

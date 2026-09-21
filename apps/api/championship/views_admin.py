@@ -346,6 +346,7 @@ class RulesSerializer(serializers.Serializer):
     discards = serializers.IntegerField(min_value=0, max_value=20)
     discard_absences = serializers.BooleanField(default=True)
     consistency_top_n = serializers.IntegerField(min_value=1, max_value=50)
+    podium_positions = serializers.IntegerField(min_value=1, max_value=20)
     tiebreak_order = serializers.ListField(child=serializers.ChoiceField(choices=list(TIEBREAKERS)))
     pole_bonus = serializers.DecimalField(max_digits=5, decimal_places=2)
     fastest_lap_bonus = serializers.DecimalField(max_digits=5, decimal_places=2)
@@ -376,6 +377,7 @@ def _rules_payload(season: Season) -> dict:
         "discards": config.discards,
         "discard_absences": config.discard_absences,
         "consistency_top_n": config.consistency_top_n,
+        "podium_positions": config.podium_positions,
         "tiebreak_order": config.tiebreak_order,
         "tiebreak_options": TIEBREAKERS,
         "pole_bonus": float(config.pole_bonus),
@@ -413,6 +415,7 @@ def rules(request):
             "discards",
             "discard_absences",
             "consistency_top_n",
+            "podium_positions",
             "tiebreak_order",
             "pole_bonus",
             "fastest_lap_bonus",

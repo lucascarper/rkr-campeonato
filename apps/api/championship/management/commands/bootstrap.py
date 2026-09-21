@@ -20,6 +20,7 @@ RKR_CONFIG = {
     "discards": 2,
     "discard_absences": True,  # faltas também podem ser descartadas (confirmado com a organização)
     "consistency_top_n": 5,
+    "podium_positions": 5,  # pódio da RKR: do 1º ao 5º
     "tiebreak_order": ["countback", "poles", "fastest_laps"],
     "pole_bonus": 1,
     "fastest_lap_bonus": 2,

@@ -145,7 +145,7 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
         {/* Estatísticas extras: cartões sem dado na planilha não aparecem */}
         <h2 className="display mt-14 text-3xl font-extrabold">Mais números</h2>
         <div className="mt-4 grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
-          <ExtraCard title="Pódios">
+          <ExtraCard title="Pódios" note={`Chegadas entre os ${data.podium_positions} primeiros`}>
             <TopBars entries={extras.podiums} {...bars} />
           </ExtraCard>
           <ExtraCard title="Posição média de chegada" note="Menor é melhor · mínimo de 50% das corridas">
@@ -181,7 +181,10 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
           <ExtraCard title="Maior sequência pontuando">
             <TopBars entries={extras.streaks.points} format={(v) => `${v} seguidas`} {...bars} />
           </ExtraCard>
-          <ExtraCard title="Maior sequência de pódios">
+          <ExtraCard
+            title="Maior sequência de pódios"
+            note={`Etapas seguidas terminando entre os ${data.podium_positions} primeiros`}
+          >
             <TopBars
               entries={extras.streaks.podiums}
               format={(v) => `${v} seguidos`}

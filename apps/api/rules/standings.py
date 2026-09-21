@@ -13,6 +13,7 @@ TIEBREAKERS = {
     "fastest_laps": "Mais voltas mais rápidas",
 }
 DEFAULT_TIEBREAK = ["countback", "poles", "fastest_laps"]
+DEFAULT_PODIUM = 3  # RKR usa 5 (SeasonConfig.podium_positions)
 
 _ABSENT = 10_000
 
@@ -72,6 +73,7 @@ def compute_standings(
     drivers: Iterable[int | str] = (),
     tiebreak: Sequence[str] = DEFAULT_TIEBREAK,
     upto: int | None = None,
+    podium: int = DEFAULT_PODIUM,
 ) -> list[StandingRow]:
     """Classificação sem descarte: soma de todos os pontos até a etapa `upto` (inclusive).
 
@@ -98,7 +100,7 @@ def compute_standings(
                 row.races += 1
             if r.position == 1:
                 row.wins += 1
-            if r.position and r.position <= 3:
+            if r.position and r.position <= podium:
                 row.podiums += 1
             row.poles += int(r.pole)
             row.fastest_laps += int(r.fastest_lap)
@@ -125,6 +127,7 @@ def standings_by_event(
     drivers: Iterable[int | str] = (),
     tiebreak: Sequence[str] = DEFAULT_TIEBREAK,
     event_numbers: Iterable[int] | None = None,
+    podium: int = DEFAULT_PODIUM,
 ) -> dict[int, list[StandingRow]]:
     """Classificação após cada etapa, com a variação de posição em relação à etapa anterior."""
     results = list(results)
@@ -137,7 +140,7 @@ def standings_by_event(
     for number in numbers:
         # Nos cortes intermediários só aparece quem já tinha corrido; no último, todos os inscritos.
         registered = drivers if number == numbers[-1] else ()
-        rows = compute_standings(results, registered, tiebreak, upto=number)
+        rows = compute_standings(results, registered, tiebreak, upto=number, podium=podium)
         for row in rows:
             row.previous_position = previous.get(row.driver_id)
         previous = {row.driver_id: row.position for row in rows}

@@ -171,3 +171,16 @@ class TestDashboard:
         board = build_dashboard(results, event_numbers=[1], total_races=1)
         pen = board["indicators"]["penalties"]
         assert pen["total"] == 3 and pen["total_seconds"] == 20 and pen["top"][0]["driver_id"] == "a"
+
+
+class TestPodium:
+    def test_podium_size_is_configurable(self):
+        results = [result("a", 1, 4), result("a", 2, 5), result("a", 3, 6)]
+        assert compute_standings(results)[0].podiums == 0
+        assert compute_standings(results, podium=5)[0].podiums == 2
+
+    def test_stats_and_streak_use_podium_size(self):
+        results = [result("a", n, pos, seq=1) for n, pos in ((1, 5), (2, 4), (3, 2), (4, 6))]
+        board = build_dashboard(results, event_numbers=[1, 2, 3, 4], total_races=4, podium=5)
+        assert board["driver_stats"]["a"]["podiums"] == 3
+        assert board["extras"]["streaks"]["podiums"][0]["value"] == 3

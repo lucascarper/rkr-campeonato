@@ -233,3 +233,16 @@ def test_media_does_not_expose_spreadsheets(client, imported):
     assert client.get("/media/imports/2026/09/rkr-2026-etapa-8.xlsx").status_code == 404
     assert client.get("/media/drivers/../imports/x.xlsx").status_code == 404
     assert client.get("/media/drivers/nao-existe/abc-lg.webp").status_code == 404
+
+
+def test_podium_counts_top_five(client, imported):
+    """Pódio da RKR vai até o 5º: a contagem da tabela e da janela do piloto usa o top 5."""
+    rows = client.get("/api/standings/?category=RK1").json()["rows"]
+    checked = 0
+    for row in rows[:10]:
+        profile = client.get(f"/api/drivers/{row['driver']['slug']}/?category=RK1").json()
+        positions = [r["position"] for r in profile["races"] if r["position"]]
+        top5 = sum(1 for p in positions if p <= 5)
+        assert row["podiums"] == profile["stats"]["podiums"] == top5
+        checked += top5 > sum(1 for p in positions if p <= 3)
+    assert checked  # ao menos um piloto com 4º ou 5º lugar, onde a regra faz diferença

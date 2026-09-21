@@ -130,6 +130,7 @@ export interface Dashboard {
   range: { from: number | null; to: number | null };
   all_events: EventInfo[];
   availability: Record<string, boolean>;
+  podium_positions: number;
   drivers: Record<string, DriverRef>;
   total_races: number;
   events: number[];

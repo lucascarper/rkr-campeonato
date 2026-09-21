@@ -11,6 +11,7 @@ oficial `RKR 2026 Classificação - Etapa 8.xlsx`. Todas são editáveis no pain
 | Pré-temporada | Os pontos de E1–E3 **somam na categoria final do piloto** (categoria da aba RK1/RK2/RK3). |
 | Descartes | **2** piores resultados, somente na visão "Com descarte" da janela do piloto. **Etapas em que o piloto faltou também podem ser descartadas** (contam como 0 ponto), assim como DNS. Isso substitui a regra da documentação base ("ausência não é descartada"); é configurável em Regras → "Faltas podem ser descartadas". Decidido em 21/09/2026. |
 | Desempate | Pontos → mais vitórias → mais 2º lugares → 3º… (contagem regressiva) → mais poles → mais VRs. Empate total: mesma posição. |
+| Pódio | Do **1º ao 5º** lugar de cada etapa (vale para a coluna "Pód", a janela do piloto e o dashboard). Configurável em Regras → "Pódio até a posição". Decidido em 21/09/2026. O bônus de VR continua valendo do 4º lugar em diante, como na planilha oficial. |
 | Consistência | Top **5**, mínimo de 50% das corridas. |
 | Colunas da planilha | Posição, piloto, pontos da posição, pole, VR, camiseta e observações (penalizações/DQ). **Não há** largada nem tempo de volta: "ganho de posições" e "melhor volta" ficam ocultos. |
 | Troca de categoria | Resultados guardam a categoria da corrida; a pré-temporada vai para a categoria atual do piloto (editável em Pilotos). |

@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from statistics import mean, pstdev
 
-from .standings import StandingRow
+from .standings import DEFAULT_PODIUM, StandingRow
 from .types import ScoredResult
 
 
@@ -16,7 +16,7 @@ def _longest_streak(flags: Iterable[bool]) -> int:
     return best
 
 
-def driver_stats(results: Sequence[ScoredResult], top_n: int = 5) -> dict:
+def driver_stats(results: Sequence[ScoredResult], top_n: int = 5, podium: int = DEFAULT_PODIUM) -> dict:
     """Estatísticas de um piloto a partir dos seus resultados (já filtrados por categoria)."""
     played = [r for r in results if r.participated]
     positions = [r.position for r in played if r.position]
@@ -29,7 +29,7 @@ def driver_stats(results: Sequence[ScoredResult], top_n: int = 5) -> dict:
         "races": races,
         "wins": sum(1 for p in positions if p == 1),
         "seconds": sum(1 for p in positions if p == 2),
-        "podiums": sum(1 for p in positions if p <= 3),
+        "podiums": sum(1 for p in positions if p <= podium),
         "top_n": sum(1 for p in positions if p <= top_n),
         "poles": sum(1 for r in played if r.pole),
         "fastest_laps": sum(1 for r in played if r.fastest_lap),
@@ -61,6 +61,7 @@ def build_dashboard(
     total_races: int,
     cuts: dict[int, list[StandingRow]] | None = None,
     top_n: int = 5,
+    podium: int = DEFAULT_PODIUM,
     availability: dict[str, bool] | None = None,
     limit: int = 5,
 ) -> dict:
@@ -74,7 +75,9 @@ def build_dashboard(
     by_driver: dict = defaultdict(list)
     for r in results:
         by_driver[r.driver_id].append(r)
-    stats = {d: driver_stats(sorted(rs, key=lambda r: r.sequence), top_n) for d, rs in by_driver.items()}
+    stats = {
+        d: driver_stats(sorted(rs, key=lambda r: r.sequence), top_n, podium) for d, rs in by_driver.items()
+    }
     eligible = {d for d, s in stats.items() if total_races and s["races"] * 2 >= total_races}
 
     # --- Indicadores obrigatórios -------------------------------------------------------------
@@ -139,7 +142,9 @@ def build_dashboard(
         flat = [r for group in seq for r in group]
         streak_points.append(_entry(d, _longest_streak(r is not None and r.points > 0 for r in flat)))
         streak_podiums.append(
-            _entry(d, _longest_streak(r is not None and bool(r.position) and r.position <= 3 for r in flat))
+            _entry(
+                d, _longest_streak(r is not None and bool(r.position) and r.position <= podium for r in flat)
+            )
         )
 
     extras: dict = {
