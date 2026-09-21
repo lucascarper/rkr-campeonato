@@ -6,7 +6,6 @@ import type { NextRequest } from "next/server";
 
 import { parseCategory } from "@/lib/categories";
 import { formatPoints, initials } from "@/lib/format";
-import { siteUrl } from "@/lib/site";
 
 /**
  * Arte de resumo do pódio para redes sociais (PNG).
@@ -19,6 +18,8 @@ const RED = "#E10613";
 const BG = "#0A0A0B";
 const SURFACE = "#121215";
 const MUTED = "#9A9AA3";
+// Site oficial do campeonato, no rodapé das artes (pode ser trocado sem mexer no código).
+const OFFICIAL_SITE = process.env.NEXT_PUBLIC_OFFICIAL_SITE || "rkrbrasilia.com.br";
 
 type PodiumRow = {
   position: number;
@@ -135,7 +136,6 @@ export async function GET(request: NextRequest) {
   const title = `ETAPA ${data.event.number}`;
   // Baterias da pré-temporada misturam as categorias: o selo mostra a bateria, não a categoria.
   const badge = data.race.preseason ? data.race.label.toUpperCase() : data.category.code;
-  const host = siteUrl().host;
 
   const image = new ImageResponse(
     <div
@@ -450,7 +450,7 @@ export async function GET(request: NextRequest) {
         }}
       >
         <span>CLASSIFICAÇÃO COMPLETA</span>
-        <span style={{ color: "#FFFFFF" }}>{host.toUpperCase()}</span>
+        <span style={{ color: "#FFFFFF" }}>{OFFICIAL_SITE.toUpperCase()}</span>
       </div>
       <div style={{ display: "flex", height: 10, background: RED }} />
     </div>,
