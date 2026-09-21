@@ -104,7 +104,7 @@ rodá-lo a cada deploy.
 | web | `NEXT_PUBLIC_PHOTO_HOST` | domínio público do bucket (opcional) |
 | api | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
 | api | `DJANGO_SECRET_KEY` | chave longa e aleatória |
-| api | `DJANGO_ALLOWED_HOSTS` | `.railway.internal,rkr.com.br` (domínio público do site incluído) |
+| api | `DJANGO_ALLOWED_HOSTS` | opcional: domínios extras. O endereço privado da api (`RAILWAY_PRIVATE_DOMAIN`), o healthcheck da Railway e os domínios de `CSRF_TRUSTED_ORIGINS` já entram automaticamente |
 | api | `CSRF_TRUSTED_ORIGINS` | `https://rkr.com.br` |
 | api | `DJANGO_SUPERUSER_USERNAME` / `DJANGO_SUPERUSER_PASSWORD` | primeiro administrador (senha com 12+ caracteres) |
 | api | `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`, `S3_PUBLIC_DOMAIN` | bucket de fotos (ver abaixo) |

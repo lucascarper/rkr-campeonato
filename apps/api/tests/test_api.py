@@ -158,3 +158,29 @@ def test_check_storage_command(db, capsys):
 
     call_command("check_storage")
     assert "OK: gravou, leu e apagou" in capsys.readouterr().out
+
+
+def test_private_domain_always_allowed(monkeypatch):
+    """DJANGO_ALLOWED_HOSTS só com o domínio público não pode bloquear a rede privada da Railway."""
+    import importlib
+
+    import config.settings as project_settings
+
+    monkeypatch.setenv("DJANGO_ALLOWED_HOSTS", "rkr-web.up.railway.app")
+    monkeypatch.setenv("RAILWAY_PRIVATE_DOMAIN", "rkr-campeonato-api.railway.internal")
+    try:
+        reloaded = importlib.reload(project_settings)
+        assert "rkr-campeonato-api.railway.internal" in reloaded.ALLOWED_HOSTS
+        assert "healthcheck.railway.app" in reloaded.ALLOWED_HOSTS
+        assert "rkr-web.up.railway.app" in reloaded.ALLOWED_HOSTS
+    finally:
+        monkeypatch.undo()
+        importlib.reload(project_settings)
+
+
+def test_internal_request_with_port(client, settings, imported):
+    settings.ALLOWED_HOSTS = ["rkr-campeonato-api.railway.internal"]
+    response = client.get(
+        "/api/standings/?category=RK1", HTTP_HOST="rkr-campeonato-api.railway.internal:8000"
+    )
+    assert response.status_code == 200

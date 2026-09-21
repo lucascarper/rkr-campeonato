@@ -27,6 +27,12 @@ if not SECRET_KEY:
     raise RuntimeError("Defina DJANGO_SECRET_KEY (ou DJANGO_DEBUG=true para desenvolvimento).")
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.railway.internal")
+# Hosts da própria infraestrutura entram sempre, mesmo que DJANGO_ALLOWED_HOSTS liste só o domínio público:
+# o web busca os dados pela rede privada (RAILWAY_PRIVATE_DOMAIN, injetado pela Railway) e o healthcheck
+# da Railway usa o próprio host.
+for _host in (os.environ.get("RAILWAY_PRIVATE_DOMAIN", ""), "healthcheck.railway.app"):
+    if _host and _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
 # O Django exige o protocolo; "rkr.com.br" vira "https://rkr.com.br".
 CSRF_TRUSTED_ORIGINS = [
     origin if "://" in origin else f"https://{origin}"
