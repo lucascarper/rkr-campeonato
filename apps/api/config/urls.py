@@ -18,6 +18,7 @@ urlpatterns = [
     api("standings", pub.standings, "standings"),
     api("dashboard", pub.dashboard, "dashboard"),
     api(r"drivers/(?P<slug>[-\w]+)", pub.driver_detail, "driver-detail"),
+    api("podium", pub.podium, "podium"),
     api("admin/session", adm.session, "admin-session"),
     api("admin/login", adm.login_view, "admin-login"),
     api("admin/logout", adm.logout_view, "admin-logout"),

@@ -246,3 +246,40 @@ def test_podium_counts_top_five(client, imported):
         assert row["podiums"] == profile["stats"]["podiums"] == top5
         checked += top5 > sum(1 for p in positions if p <= 3)
     assert checked  # ao menos um piloto com 4º ou 5º lugar, onde a regra faz diferença
+
+
+def test_podium_endpoint(client, imported):
+    data = client.get("/api/podium/?category=RK1&event=8").json()
+    assert data["event"]["number"] == 8 and data["race"] == {"label": "Final", "preseason": False}
+    assert [r["position"] for r in data["rows"]] == [1, 2, 3, 4, 5]
+    assert data["rows"][0]["driver"]["name"] == "Bárbara Louly"
+    assert [e["number"] for e in data["events"]] == [1, 2, 3, 4, 5, 6, 7, 8]
+    # Pré-temporada: pódio por bateria
+    heat = client.get("/api/podium/?category=RK2&event=1&race=Bateria B").json()
+    assert heat["race"] == {"label": "Bateria B", "preseason": True}
+    assert heat["rows"][0]["driver"]["name"] == "Marcelo Albuquerque"
+    # Etapa inexistente: usa a última com resultado
+    assert client.get("/api/podium/?category=RK1&event=99").json()["event"]["number"] == 8
+
+
+def test_podium_excludes_disqualified(client, imported):
+    # E7 RK1: DSQ na 16ª posição nunca entra no pódio; aqui só conferimos que os 5 terminaram.
+    rows = client.get("/api/podium/?category=RK1&event=7").json()["rows"]
+    assert len(rows) == 5 and all(r["position"] <= 5 for r in rows)
+
+
+def test_photo_jpeg_for_art(admin_client, client, imported, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    buffer = io.BytesIO()
+    Image.new("RGB", (600, 800), "green").save(buffer, "JPEG")
+    buffer.name = "foto.jpg"
+    buffer.seek(0)
+    driver = Driver.objects.get(slug="barbara-louly")
+    admin_client.post(f"/api/admin/drivers/{driver.id}/photo/", {"photo": buffer})
+    cache.clear()
+    art = client.get("/api/podium/?category=RK1&event=8").json()["rows"][0]["driver"]["photo_art"]
+    assert art.endswith("-lg.webp?format=jpeg")
+    response = client.get(art)
+    assert response.status_code == 200 and response["Content-Type"] == "image/jpeg"
+    with Image.open(io.BytesIO(response.content)) as img:
+        assert img.format == "JPEG" and img.size == (900, 1200)

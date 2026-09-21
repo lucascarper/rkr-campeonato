@@ -1,7 +1,11 @@
 """Endpoints públicos (somente leitura, sem login)."""
 
+from urllib.parse import quote
+
+from django.conf import settings
 from django.core.cache import cache
 from django.db import connection
+from django.db.models import Q
 from django.http import Http404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -11,7 +15,7 @@ from rules.discard import find_absences
 from rules.stats import build_dashboard, driver_stats
 
 from . import services
-from .models import Category, Driver, Event, Standing
+from .models import Category, Driver, Event, Race, Standing
 
 
 def _season(request):
@@ -303,4 +307,85 @@ def _driver(season, category, driver, upto_param):
                 | {a.event_number for a in absences if a.result_id in discarded}
             ),
         },
+    }
+
+
+# --- arte do pódio -------------------------------------------------------------------------------
+
+PODIUM_ROWS = 5  # 3 com foto no pódio + 4º e 5º só com o nome
+
+
+@api_view(["GET"])
+def podium(request):
+    """Os 5 primeiros de uma corrida, para a arte de resumo da etapa.
+
+    Etapas da categoria usam a final da categoria. Na pré-temporada (baterias com categorias
+    misturadas) escolhe-se a bateria em `race`; sem ela, a primeira.
+    """
+    season = _season(request)
+    category = _category(request)
+    key = (
+        f"podium:{season.id}:{season.data_version}:{category.id}:"
+        f"{request.query_params.get('event')}:{quote(request.query_params.get('race') or '')}"
+    )
+    return Response(
+        _cached(
+            key,
+            lambda: _podium(season, category, _int_param(request, "event"), request.query_params.get("race")),
+        )
+    )
+
+
+def _podium(season, category, event_number, race_label):
+    races = (
+        Race.objects.filter(event__season=season, results__active=True)
+        .filter(Q(category=category) | Q(category=None))
+        .select_related("event", "category")
+        .distinct()
+        .order_by("event__number", "order")
+    )
+    options: dict[int, dict] = {}
+    for race in races:
+        entry = options.setdefault(race.event.number, {**_event_payload(race.event), "races": []})
+        entry["races"].append(race.label)
+    available = [options[n] for n in sorted(options)]
+    if not available:
+        raise Http404("Sem etapas com resultado nesta categoria")
+
+    number = event_number if event_number in options else available[-1]["number"]
+    event_races = [r for r in races if r.event.number == number]
+    race = next((r for r in event_races if r.label == race_label), event_races[0])
+
+    results = (
+        race.results.filter(active=True, position__isnull=False)
+        .exclude(status__in=["DSQ", "DNS"])
+        .select_related("driver")
+        .order_by("position")[:PODIUM_ROWS]
+    )
+    rows = []
+    for result in results:
+        driver = result.driver
+        payload = services.driver_payload(driver, large=True)
+        rows.append(
+            {
+                "position": result.position,
+                "points": float(result.points),
+                "pole": result.pole,
+                "fastest_lap": result.fastest_lap,
+                "driver": {
+                    **payload,
+                    # JPEG servido pela api (o gerador de imagens não lê WebP)
+                    "photo_art": f"{settings.MEDIA_URL}{driver.photo}?format=jpeg"
+                    if driver.photo and not driver.hidden
+                    else None,
+                },
+            }
+        )
+    return {
+        "season": season.year,
+        "category": {"code": category.code, "name": category.name},
+        "event": _event_payload(race.event),
+        "race": {"label": race.label, "preseason": race.category_id is None},
+        "events": available,
+        "rows": rows,
     }
