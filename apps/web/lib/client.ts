@@ -12,7 +12,9 @@ export async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T>
       detail = body.detail ?? JSON.stringify(body);
     } catch {
       // Sem JSON: a requisição foi barrada antes da api (ex.: domínio fora de DJANGO_ALLOWED_HOSTS).
-      if (response.status === 400) {
+      if (response.status >= 500) {
+        detail = `O site não conseguiu falar com o serviço de dados (erro ${response.status}). Tente de novo em instantes; se persistir, confira os logs da api na Railway.`;
+      } else if (response.status === 400) {
         detail =
           "O servidor recusou o endereço deste site (erro 400). Inclua o domínio do site em DJANGO_ALLOWED_HOSTS e CSRF_TRUSTED_ORIGINS no serviço da api.";
       }
