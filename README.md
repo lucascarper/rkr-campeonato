@@ -88,7 +88,7 @@ Em cada serviço, configure o *Root Directory* para a pasta correspondente.
 
 | Serviço | Variável | Valor |
 | --- | --- | --- |
-| web | `API_INTERNAL_URL` | `http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}` |
+| web | `API_INTERNAL_URL` | `http://${{<serviço-api>.RAILWAY_PRIVATE_DOMAIN}}:${{<serviço-api>.PORT}}` |
 | web | `NEXT_PUBLIC_SITE_URL` | URL pública, ex.: `https://rkr.com.br` |
 | web | `REVALIDATE_SECRET` | segredo longo e aleatório (o mesmo da api) |
 | web | `NEXT_PUBLIC_PHOTO_HOST` | domínio público do bucket (opcional) |
@@ -98,9 +98,16 @@ Em cada serviço, configure o *Root Directory* para a pasta correspondente.
 | api | `CSRF_TRUSTED_ORIGINS` | `https://rkr.com.br` |
 | api | `DJANGO_SUPERUSER_USERNAME` / `DJANGO_SUPERUSER_PASSWORD` | primeiro administrador (senha com 12+ caracteres) |
 | api | `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_PUBLIC_DOMAIN` | bucket de fotos |
-| api | `WEB_REVALIDATE_URL` | `http://${{web.RAILWAY_PRIVATE_DOMAIN}}:${{web.PORT}}/revalidate` |
+| api | `PORT` | `8000` (defina explicitamente, para o web conseguir referenciar) |
+| api | `WEB_REVALIDATE_URL` | `http://${{<serviço-web>.RAILWAY_PRIVATE_DOMAIN}}:${{<serviço-web>.PORT}}/revalidate` |
+| web | `PORT` | `3000` (defina explicitamente, para a api conseguir referenciar) |
 | api | `REVALIDATE_SECRET` | o mesmo do web |
 | api | `SENTRY_DSN` | opcional |
+
+`<serviço-api>` e `<serviço-web>` são os **nomes exatos dos serviços** no painel da Railway (ex.: `rkr-campeonato-api`).
+Se o nome não bater, ou se `PORT` não estiver definida no serviço referenciado, a referência vira vazia e
+o build do web falha com "API_INTERNAL_URL inválida". Como as rotas `/api` são gravadas no build, qualquer
+mudança em `API_INTERNAL_URL` exige um novo deploy do web.
 
 A api não precisa de domínio público: o navegador fala só com o web, que repassa `/api/*` e `/media/*`
 pela rede privada (mesma origem, sem CORS, cookie de sessão seguro).
