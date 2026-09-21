@@ -11,7 +11,11 @@ export async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T>
       const body = await response.json();
       detail = body.detail ?? JSON.stringify(body);
     } catch {
-      /* resposta sem JSON */
+      // Sem JSON: a requisição foi barrada antes da api (ex.: domínio fora de DJANGO_ALLOWED_HOSTS).
+      if (response.status === 400) {
+        detail =
+          "O servidor recusou o endereço deste site (erro 400). Inclua o domínio do site em DJANGO_ALLOWED_HOSTS e CSRF_TRUSTED_ORIGINS no serviço da api.";
+      }
     }
     throw new Error(detail);
   }

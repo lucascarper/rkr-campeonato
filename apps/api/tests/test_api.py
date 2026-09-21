@@ -92,3 +92,30 @@ def test_photo_rejects_other_formats(admin_client, imported):
     fake.name = "x.gif"
     driver = Driver.objects.first()
     assert admin_client.post(f"/api/admin/drivers/{driver.id}/photo/", {"photo": fake}).status_code == 400
+
+
+def test_login_through_proxy_with_public_domain(client, django_user_model, settings):
+    """O Next repassa /api com X-Forwarded-Host = domínio público; basta ele estar em CSRF_TRUSTED_ORIGINS."""
+    import importlib
+
+    import config.settings as project_settings
+
+    cache.clear()
+    django_user_model.objects.create_user("adm", password="certa-123456!", is_staff=True)
+    headers = {"HTTP_X_FORWARDED_HOST": "rkr-web.up.railway.app", "HTTP_HOST": "rkr-api.railway.internal"}
+    settings.ALLOWED_HOSTS = [".railway.internal"]
+    assert client.get("/api/admin/session/", **headers).status_code == 400  # domínio público não autorizado
+
+    import os
+
+    os.environ["CSRF_TRUSTED_ORIGINS"] = "rkr-web.up.railway.app"
+    try:
+        reloaded = importlib.reload(project_settings)
+        settings.ALLOWED_HOSTS = reloaded.ALLOWED_HOSTS
+        settings.CSRF_TRUSTED_ORIGINS = reloaded.CSRF_TRUSTED_ORIGINS
+    finally:
+        del os.environ["CSRF_TRUSTED_ORIGINS"]
+        importlib.reload(project_settings)
+    assert "rkr-web.up.railway.app" in settings.ALLOWED_HOSTS
+    response = client.post("/api/admin/login/", {"username": "adm", "password": "certa-123456!"}, **headers)
+    assert response.status_code == 200, response.content

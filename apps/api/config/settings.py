@@ -6,6 +6,7 @@ roda localmente com SQLite e fotos em disco (./media).
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 
@@ -30,6 +31,13 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.railway.i
 CSRF_TRUSTED_ORIGINS = [
     origin if "://" in origin else f"https://{origin}"
     for origin in env_list("CSRF_TRUSTED_ORIGINS", "http://localhost:3000")
+]
+# O site público chega à api pelo proxy do Next com o próprio domínio (X-Forwarded-Host): quem já é
+# origem confiável também precisa ser host aceito, senão o Django responde 400 (DisallowedHost).
+ALLOWED_HOSTS += [
+    host
+    for host in (urlparse(origin).hostname for origin in CSRF_TRUSTED_ORIGINS)
+    if host and host not in ALLOWED_HOSTS
 ]
 
 INSTALLED_APPS = [
