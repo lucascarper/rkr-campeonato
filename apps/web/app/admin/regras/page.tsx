@@ -9,6 +9,7 @@ type Table = { name: string; is_default: boolean; rules: { position: number; poi
 type Rules = {
   season: number;
   discards: number;
+  discard_absences: boolean;
   consistency_top_n: number;
   tiebreak_order: string[];
   tiebreak_options: Record<string, string>;
@@ -117,6 +118,20 @@ export default function RulesPage() {
             className={inputClass}
           />
         </Field>
+        <label className="flex items-start gap-2 self-end pb-2 text-sm">
+          <input
+            type="checkbox"
+            checked={rules.discard_absences}
+            onChange={(e) => set("discard_absences", e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            Faltas podem ser descartadas
+            <span className="block text-xs text-muted">
+              Etapa que o piloto não correu conta como 0 e entra nos descartes.
+            </span>
+          </span>
+        </label>
         <Field label="Consistência: top N" hint="Percentual de corridas entre os N primeiros.">
           <input
             type="number"

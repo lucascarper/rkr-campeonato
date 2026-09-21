@@ -20,12 +20,34 @@ def test_public_endpoints(client, imported):
 
 
 def test_driver_profile_with_discards(client, imported):
+    # Ed Júnior correu 6 das 8 etapas: os 2 descartes caem nas faltas (E1 e E5) e ele não perde pontos.
     data = client.get("/api/drivers/ed-junior/").json()
-    assert data["category"] == "RK2" and data["rank"] == 1
-    assert len(data["series"]["discarded_races"]) == 2
-    assert data["series"]["with_discard"][-1] == data["stats"]["points_with_discard"]
-    assert data["series"]["no_discard"][-1] == data["stats"]["points"] == 128
+    assert data["category"] == "RK2" and data["rank"] == 1 and data["discard_absences"] is True
+    assert [a["event"] for a in data["absences"]] == [1, 5]
+    assert all(a["discarded"] for a in data["absences"])
+    assert data["series"]["discarded_events"] == [1, 5]
+    assert data["stats"]["points_with_discard"] == data["stats"]["points"] == 128
+    assert data["series"]["with_discard"][-1] == 128
+    assert not any(r["discarded"] for r in data["races"])
+
+
+def test_discard_without_absences_rule(client, imported, season):
+    from championship.services import recalculate
+
+    season.config.discard_absences = False
+    season.config.save()
+    recalculate(season)
+    data = client.get("/api/drivers/ed-junior/").json()
+    assert data["stats"]["points_with_discard"] == 108  # regra antiga: descarta 1 e 19 pontos
     assert sum(1 for r in data["races"] if r["discarded"]) == 2
+    assert not any(a["discarded"] for a in data["absences"])
+
+
+def test_standing_with_discard_counts_absences(imported):
+    from championship.models import Standing
+
+    row = Standing.objects.get(category__code="RK2", upto_event=8, driver__slug="ed-junior")
+    assert float(row.points_with_discard) == 128
 
 
 def test_hidden_driver(client, imported):

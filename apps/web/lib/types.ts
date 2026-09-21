@@ -96,6 +96,16 @@ export interface DriverProfile {
     points_per_race: number | null;
   };
   races: DriverRace[];
+  /** Corridas da categoria que o piloto não disputou (valem 0 e podem ser descartadas). */
+  absences: {
+    event: number;
+    id: string;
+    date: string | null;
+    location: string;
+    preseason: boolean;
+    discarded: boolean;
+  }[];
+  discard_absences: boolean;
   series: {
     events: number[];
     labels: string[];
@@ -103,7 +113,7 @@ export interface DriverProfile {
     no_discard: number[];
     with_discard: number[];
     positions: (number | null)[];
-    discarded_races: number[];
+    discarded_races: (number | string)[];
     discarded_events: number[];
   };
 }

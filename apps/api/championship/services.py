@@ -18,7 +18,7 @@ from django.db import transaction
 from django.db.models import F, Prefetch
 
 from rules import ScoredResult, ScoringConfig, race_points, standings_by_event
-from rules.discard import apply_discards
+from rules.discard import apply_discards, find_absences
 
 from .models import (
     Category,
@@ -126,7 +126,12 @@ def recalculate(season: Season) -> dict:
         for number, standing in cuts.items():
             for row in standing:
                 upto = [r for r in data.by_driver.get(row.driver_id, []) if r.event_number <= number]
-                with_discard, _ = apply_discards(upto, config.discards)
+                with_discard, _ = apply_discards(
+                    upto,
+                    config.discards,
+                    find_absences(upto, data.total_race_slots, upto=number),
+                    config.discard_absences,
+                )
                 rows.append(
                     Standing(
                         season=season,

@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from rules import apply_discards, standings_by_event
+from rules.discard import find_absences
 from rules.stats import build_dashboard, driver_stats
 
 from . import services
@@ -203,7 +204,8 @@ def _driver(season, category, driver, upto_param):
         (r for r in data.by_driver.get(driver.id, []) if upto is None or r.event_number <= upto),
         key=lambda r: r.sequence,
     )
-    with_discard, discarded = apply_discards(results, config.discards)
+    absences = find_absences(results, data.total_race_slots, upto=upto)
+    with_discard, discarded = apply_discards(results, config.discards, absences, config.discard_absences)
     stats = driver_stats(results, config.consistency_top_n)
 
     standing = {
@@ -245,6 +247,20 @@ def _driver(season, category, driver, upto_param):
             }
         )
 
+    absence_list = [
+        {
+            "event": a.event_number,
+            "id": a.result_id,
+            "date": event_map[a.event_number].date.isoformat()
+            if a.event_number in event_map and event_map[a.event_number].date
+            else None,
+            "location": event_map[a.event_number].location if a.event_number in event_map else "",
+            "preseason": event_map[a.event_number].is_preseason if a.event_number in event_map else False,
+            "discarded": a.result_id in discarded,
+        }
+        for a in absences
+    ]
+
     return {
         "driver": {
             **services.driver_payload(driver, large=True),
@@ -257,6 +273,7 @@ def _driver(season, category, driver, upto_param):
         "rank": current.position if current else None,
         "total_drivers": total_drivers,
         "discards": config.discards,
+        "discard_absences": config.discard_absences,
         "stats": {
             **{k: v for k, v in stats.items() if k not in ("seconds", "top_n", "std_position")},
             "points": float(current.points) if current else stats["points"],
@@ -264,6 +281,7 @@ def _driver(season, category, driver, upto_param):
             "gap_to_leader": float(current.gap_to_leader) if current else None,
         },
         "races": races,
+        "absences": absence_list,
         "series": {
             "events": events,
             "labels": [f"Etapa {n}" for n in events],
@@ -271,7 +289,10 @@ def _driver(season, category, driver, upto_param):
             "no_discard": no_discard_series,
             "with_discard": with_discard_series,
             "positions": positions,
-            "discarded_races": sorted(discarded),
-            "discarded_events": sorted({r.event_number for r in results if r.result_id in discarded}),
+            "discarded_races": sorted(discarded, key=str),
+            "discarded_events": sorted(
+                {r.event_number for r in results if r.result_id in discarded}
+                | {a.event_number for a in absences if a.result_id in discarded}
+            ),
         },
     }

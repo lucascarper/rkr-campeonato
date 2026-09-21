@@ -49,7 +49,11 @@ export function DriverChart({ profile, withDiscard }: { profile: DriverProfile; 
               return `<div style="display:flex;justify-content:space-between;gap:16px"><span>${r.label}</span><span style="font-family:${CHART_THEME.mono}">${pos} · ${formatPoints(r.points)} pts${pen}${faded}</span></div>`;
             })
             .join("")
-        : '<div style="color:#9A9AA3">Não correu nesta etapa</div>';
+        : `<div style="color:#9A9AA3">Não correu nesta etapa${
+            withDiscard && profile.absences?.some((a) => a.event === event && a.discarded)
+              ? " (falta descartada)"
+              : ""
+          }</div>`;
       return `<div style="min-width:200px">
         <div style="font-family:${CHART_THEME.mono};font-size:11px;letter-spacing:.12em;color:#9A9AA3;text-transform:uppercase">Etapa ${event} · ${formatDate(meta?.date)}</div>
         <div style="margin:2px 0 6px;color:#9A9AA3">${meta?.location ?? ""}</div>

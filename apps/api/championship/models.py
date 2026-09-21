@@ -129,6 +129,9 @@ def default_tiebreak():
 class SeasonConfig(models.Model):
     season = models.OneToOneField(Season, related_name="config", on_delete=models.CASCADE)
     discards = models.PositiveSmallIntegerField(default=2)
+    discard_absences = models.BooleanField(
+        default=True, help_text="Corridas que o piloto não disputou também podem ser descartadas (valem 0)"
+    )
     consistency_top_n = models.PositiveSmallIntegerField(default=5)
     tiebreak_order = models.JSONField(default=default_tiebreak)
     pole_bonus = models.DecimalField(max_digits=5, decimal_places=2, default=0)

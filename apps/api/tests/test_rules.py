@@ -3,6 +3,7 @@ from rules import (
     ScoringConfig,
     apply_discards,
     compute_standings,
+    find_absences,
     race_points,
     standings_by_event,
 )
@@ -112,19 +113,40 @@ class TestDiscards:
         _, dropped = apply_discards(results, 1)
         assert dropped == {1}
 
-    def test_absence_is_not_discarded(self):
-        # Só 2 corridas disputadas e 3 descartes: descarta as 2, nunca "ausências".
-        results = [result("a", 1, 1, rid=1), result("a", 3, 2, rid=3)]
-        total, dropped = apply_discards(results, 3)
-        assert total == 0 and dropped == {1, 3}
+    def test_absences_are_discarded_first(self):
+        # Faltou à etapa 2: a falta (0 ponto) é descartada antes do 5º lugar (12).
+        results = [result("a", 1, 1, rid=1), result("a", 3, 5, rid=3), result("a", 4, 2, rid=4)]
+        absences = find_absences(results, {1: 1, 2: 1, 3: 1, 4: 1})
+        assert [a.event_number for a in absences] == [2]
+        total, dropped = apply_discards(results, 2, absences)
+        assert dropped == {"ausencia:2:1", 3}
+        assert total == 45  # 25 + 12 + 20 − 12 (a falta não tira pontos)
 
-    def test_dns_is_not_candidate(self):
+    def test_absences_up_to_cut(self):
+        results = [result("a", 1, 1, rid=1)]
+        assert find_absences(results, {1: 1, 2: 1, 3: 1}, upto=2) == find_absences(results, {1: 1, 2: 1})
+
+    def test_missing_one_of_two_races_in_event(self):
+        results = [result("a", 5, 1, rid=1, seq=1)]
+        absences = find_absences(results, {5: 2})
+        assert len(absences) == 1 and absences[0].event_number == 5
+
+    def test_rule_off_only_discards_raced(self):
+        # Regra antiga (configurável): ausência não é descartada.
+        results = [result("a", 1, 1, rid=1), result("a", 3, 2, rid=3)]
+        absences = find_absences(results, {1: 1, 2: 1, 3: 1})
+        total, dropped = apply_discards(results, 1, absences, discard_absences=False)
+        assert total == 25 and dropped == {3}
+
+    def test_dns_is_candidate_when_absences_count(self):
         results = [
             result("a", 1, None, 0, rid=1, status="DNS"),
             result("a", 2, 5, rid=2),
             result("a", 3, 1, rid=3),
         ]
         _, dropped = apply_discards(results, 1)
+        assert dropped == {1}
+        _, dropped = apply_discards(results, 1, discard_absences=False)
         assert dropped == {2}
 
 

@@ -268,9 +268,31 @@ function ProfileBody({
         {/* Etapas */}
         <h3 className="display mt-4 text-xl font-bold">Corridas</h3>
         <ol className="mt-2 divide-y divide-line border-y border-line">
-          {profile.races.map((race) => (
-            <RaceLine key={race.result_id} race={race} faded={withDiscard && race.discarded} />
-          ))}
+          {[
+            ...profile.races.map((race) => ({ event: race.event, order: 0, race, absence: null })),
+            ...(profile.absences ?? []).map((absence) => ({
+              event: absence.event,
+              order: 1,
+              race: null,
+              absence,
+            })),
+          ]
+            .sort((a, b) => a.event - b.event || a.order - b.order)
+            .map((item) =>
+              item.race ? (
+                <RaceLine
+                  key={item.race.result_id}
+                  race={item.race}
+                  faded={withDiscard && item.race.discarded}
+                />
+              ) : (
+                <AbsenceLine
+                  key={item.absence!.id}
+                  absence={item.absence!}
+                  faded={withDiscard && item.absence!.discarded}
+                />
+              ),
+            )}
         </ol>
       </div>
     </div>
@@ -357,6 +379,34 @@ function RaceLine({ race, faded }: { race: DriverRace; faded: boolean }) {
           )}
         </span>
         <span className="text-xs text-muted">{formatPoints(race.points)} pts</span>
+      </span>
+    </li>
+  );
+}
+
+function AbsenceLine({ absence, faded }: { absence: DriverProfile["absences"][number]; faded: boolean }) {
+  return (
+    <li
+      className={clsx(
+        "grid grid-cols-[3rem_1fr_auto] items-center gap-3 py-2.5 transition-opacity",
+        faded && "opacity-35",
+      )}
+    >
+      <span className="num text-xs text-muted">
+        E{absence.event}
+        {absence.preseason && <span className="block text-[9px] text-faint">PRÉ</span>}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm text-muted">Não correu · {absence.location}</span>
+        <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+          {formatDate(absence.date)}
+          <Badge>Falta</Badge>
+          {faded && <Badge>Descartada</Badge>}
+        </span>
+      </span>
+      <span className="num text-right">
+        <span className="block text-base font-bold text-faint">—</span>
+        <span className="text-xs text-muted">0 pts</span>
       </span>
     </li>
   );

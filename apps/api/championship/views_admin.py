@@ -344,6 +344,7 @@ class TableSerializer(serializers.Serializer):
 
 class RulesSerializer(serializers.Serializer):
     discards = serializers.IntegerField(min_value=0, max_value=20)
+    discard_absences = serializers.BooleanField(default=True)
     consistency_top_n = serializers.IntegerField(min_value=1, max_value=50)
     tiebreak_order = serializers.ListField(child=serializers.ChoiceField(choices=list(TIEBREAKERS)))
     pole_bonus = serializers.DecimalField(max_digits=5, decimal_places=2)
@@ -373,6 +374,7 @@ def _rules_payload(season: Season) -> dict:
     return {
         "season": season.year,
         "discards": config.discards,
+        "discard_absences": config.discard_absences,
         "consistency_top_n": config.consistency_top_n,
         "tiebreak_order": config.tiebreak_order,
         "tiebreak_options": TIEBREAKERS,
@@ -409,6 +411,7 @@ def rules(request):
         config = SeasonConfig.objects.select_for_update().get_or_create(season=season)[0]
         for field in (
             "discards",
+            "discard_absences",
             "consistency_top_n",
             "tiebreak_order",
             "pole_bonus",

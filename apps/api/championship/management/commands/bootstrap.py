@@ -18,6 +18,7 @@ RKR_TABLES = {
 }
 RKR_CONFIG = {
     "discards": 2,
+    "discard_absences": True,  # faltas também podem ser descartadas (confirmado com a organização)
     "consistency_top_n": 5,
     "tiebreak_order": ["countback", "poles", "fastest_laps"],
     "pole_bonus": 1,
