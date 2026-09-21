@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseCategory } from "@/lib/categories";
-import { formatDate, formatLap, formatPoints, initials, statusLabel } from "@/lib/format";
+import { formatDate, formatLap, formatPoints, initials, shortName, statusLabel } from "@/lib/format";
 
 describe("formatação", () => {
   it("formata pontos em pt-BR", () => {
@@ -32,5 +32,14 @@ describe("formatação", () => {
   it("aceita só RK1, RK2 e RK3", () => {
     expect(parseCategory("rk2")).toBe("RK2");
     expect(parseCategory("rk9")).toBeNull();
+  });
+});
+
+describe("shortName", () => {
+  it("usa primeiro e último nome, sem apelidos", () => {
+    expect(shortName("João Vitor Buzin")).toBe("João Buzin");
+    expect(shortName('Claudir "Gaúcho" de Paula')).toBe("Claudir Paula");
+    expect(shortName("Pedro Oliveira (Pedrovisk)")).toBe("Pedro Oliveira");
+    expect(shortName("Glauton Luís")).toBe("Glauton Luís");
   });
 });

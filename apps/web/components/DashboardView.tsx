@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { useCallback, useMemo, useState } from "react";
 
 import { fetchJSON, prefetchDriver } from "@/lib/client";
-import { formatDecimal, formatLap, formatPoints } from "@/lib/format";
+import { formatDecimal, formatLap, formatPoints, shortName } from "@/lib/format";
 import type { Dashboard, RankEntry } from "@/lib/types";
 import { useDriverParam } from "@/lib/useDriverParam";
 
@@ -205,7 +205,7 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
           <section className="panel cut mt-px p-4 sm:p-6">
             <ChartHeader
               title="Diferença para o líder"
-              note="Pontos atrás do líder após cada etapa, entre os 5 primeiros"
+              note="Pontos atrás do líder após cada etapa, entre os 5 primeiros. Toque num piloto para destacar."
             />
             <GapChart data={data} />
           </section>
@@ -366,67 +366,126 @@ function MoveList({
   );
 }
 
+/**
+ * Diferença para o líder: um piloto destacado por vez (vermelho, grosso, com pontos) e os demais
+ * como contexto em cinza fino. A escolha é feita por botões acima do gráfico, e não pela legenda
+ * do ECharts, que no celular quebrava em linhas sobre o eixo e confundia ligado/desligado.
+ */
 function GapChart({ data }: { data: Dashboard }) {
+  const series = useMemo(() => data.extras.gap_to_leader?.series ?? [], [data]);
+  const [focusId, setFocusId] = useState<number | null>(null);
+  const focused = series.find((s) => s.driver_id === focusId)?.driver_id ?? series[0]?.driver_id;
+  const lastValue = (values: (number | null)[]) => [...values].reverse().find((v) => v !== null) ?? null;
+
   const option = useMemo(() => {
-    const series = data.extras.gap_to_leader?.series ?? [];
-    const shades = [
-      CHART_THEME.red,
-      "#FFFFFF",
-      "rgba(255,255,255,0.65)",
-      "rgba(255,255,255,0.45)",
-      "rgba(255,255,255,0.3)",
-    ];
+    const names = series.map((s) => data.drivers[String(s.driver_id)]?.name ?? "");
+    const order = [...series.keys()].sort(
+      (a, b) => Number(series[a].driver_id === focused) - Number(series[b].driver_id === focused),
+    ); // destacado desenhado por último, por cima
     return {
-      grid: { left: 40, right: 16, top: 36, bottom: 28 },
-      legend: {
-        top: 0,
-        textStyle: { color: CHART_THEME.text, fontSize: 11 },
-        itemWidth: 14,
-        itemHeight: 2,
-        icon: "rect",
-      },
+      grid: { left: 36, right: 14, top: 12, bottom: 28 },
       tooltip: {
         trigger: "axis",
         ...CHART_THEME.tooltip,
-        valueFormatter: (v: number) => (v ? `−${formatPoints(v)}` : "líder"),
+        formatter: (params: { dataIndex: number; seriesIndex: number }[]) => {
+          const index = params[0]?.dataIndex ?? 0;
+          const rows = series
+            .map((s, i) => ({ name: names[i], value: s.values[index], mine: s.driver_id === focused }))
+            .filter((r) => r.value !== null && r.value !== undefined)
+            .sort((a, b) => (a.value as number) - (b.value as number))
+            .map(
+              (r) =>
+                `<div style="display:flex;justify-content:space-between;gap:16px;${r.mine ? "color:#fff;font-weight:600" : "color:#9A9AA3"}">` +
+                `<span>${r.mine ? "● " : ""}${r.name}</span>` +
+                `<span style="font-family:${CHART_THEME.mono}">${r.value ? `−${formatPoints(r.value as number)}` : "líder"}</span></div>`,
+            )
+            .join("");
+          return `<div style="font-family:${CHART_THEME.mono};font-size:11px;letter-spacing:.12em;color:#9A9AA3;margin-bottom:4px">APÓS E${data.events[index]}</div>${rows}`;
+        },
       },
       xAxis: {
         type: "category",
         data: data.events.map((n) => `E${n}`),
         boundaryGap: false,
         axisLine: { lineStyle: { color: CHART_THEME.line } },
+        axisTick: { show: false },
         axisLabel: { color: CHART_THEME.text, fontFamily: CHART_THEME.mono, fontSize: 11 },
       },
       yAxis: {
         type: "value",
         inverse: true,
-        name: "pts atrás",
-        nameTextStyle: { color: CHART_THEME.text, fontSize: 10 },
         splitLine: { lineStyle: { color: CHART_THEME.line } },
         axisLabel: { color: CHART_THEME.text, fontFamily: CHART_THEME.mono, fontSize: 11 },
       },
-      series: series.map((s, i) => ({
-        name: data.drivers[String(s.driver_id)]?.name ?? "",
-        type: "line",
-        data: s.values,
-        smooth: 0.2,
-        connectNulls: true,
-        symbolSize: 5,
-        lineStyle: {
-          width: i === 0 ? 2.5 : 1.5,
-          color: shades[i],
-          ...(i === 0 ? { shadowColor: CHART_THEME.redGlow, shadowBlur: 12 } : {}),
-        },
-        itemStyle: { color: shades[i] },
-      })),
+      series: order.map((i) => {
+        const mine = series[i].driver_id === focused;
+        return {
+          id: String(series[i].driver_id),
+          name: names[i],
+          type: "line",
+          data: series[i].values,
+          smooth: 0.2,
+          connectNulls: true,
+          z: mine ? 10 : 2,
+          symbol: "circle",
+          symbolSize: mine ? 7 : 0,
+          showSymbol: mine,
+          lineStyle: mine
+            ? { width: 3, color: CHART_THEME.red, shadowColor: CHART_THEME.redGlow, shadowBlur: 12 }
+            : { width: 1.25, color: "rgba(255,255,255,0.22)", shadowBlur: 0 },
+          itemStyle: mine
+            ? { color: "#FFFFFF", borderColor: CHART_THEME.red, borderWidth: 2 }
+            : { color: "rgba(255,255,255,0.22)", borderColor: "transparent", borderWidth: 0 }, // zera o destaque anterior (setOption mescla)
+          emphasis: { disabled: true },
+        };
+      }),
     };
-  }, [data]);
+  }, [series, focused, data]);
+
   return (
-    <EChart
-      option={option}
-      className="h-72 w-full"
-      ariaLabel="Diferença de pontos para o líder ao longo das etapas"
-    />
+    <div>
+      <div role="group" aria-label="Destacar piloto no gráfico" className="mb-3 flex flex-wrap gap-2">
+        {series.map((s, i) => {
+          const driver = data.drivers[String(s.driver_id)];
+          const active = s.driver_id === focused;
+          const gap = lastValue(s.values);
+          return (
+            <button
+              key={s.driver_id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setFocusId(s.driver_id)}
+              className={clsx(
+                "cut-sm flex min-w-0 items-center gap-1.5 border px-2 py-1 text-left text-xs transition-colors sm:gap-2 sm:px-2.5 sm:py-1.5 sm:text-sm",
+                active
+                  ? "border-red bg-red-soft text-text"
+                  : "border-line-strong text-muted hover:border-white/40 hover:text-text",
+              )}
+            >
+              <span className="num text-xs text-faint">{i + 1}</span>
+              <span
+                className={clsx("h-[3px] w-3 shrink-0 sm:w-4", active ? "bg-red" : "bg-white/25")}
+                aria-hidden
+              />
+              <span className="max-w-[8rem] truncate sm:max-w-[12rem]" title={driver?.name}>
+                <span className="sm:hidden">{shortName(driver?.name ?? "")}</span>
+                <span className="hidden sm:inline">{driver?.name}</span>
+              </span>
+              <span className={clsx("num text-xs", active ? "text-red" : "text-faint")}>
+                {gap ? `−${formatPoints(gap)}` : "líder"}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <EChart
+        option={option}
+        className="h-64 w-full sm:h-72"
+        ariaLabel={`Diferença de pontos para o líder ao longo das etapas, destacando ${
+          data.drivers[String(focused)]?.name ?? ""
+        }`}
+      />
+    </div>
   );
 }
 

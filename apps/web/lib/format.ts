@@ -43,3 +43,13 @@ export function initials(name: string): string {
 export function statusLabel(status: string): string {
   return { FIN: "Terminou", DNF: "Abandono", DSQ: "Desclassificado", DNS: "Não largou" }[status] ?? status;
 }
+
+/** Nome curto para espaços apertados: primeiro e último nome, sem apelidos entre aspas ou parênteses. */
+export function shortName(name: string): string {
+  const parts = name
+    .replace(/"[^"]*"|\([^)]*\)/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length <= 2) return parts.join(" ") || name;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
