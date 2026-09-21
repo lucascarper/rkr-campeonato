@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Barlow_Semi_Condensed, JetBrains_Mono } from "next/font/google";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import { SpeedLines } from "@/components/SpeedLines";
 import { siteUrl } from "@/lib/site";
 
 import "./globals.css";
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Pular para o conteúdo
         </a>
+        <SpeedLines />
         <SiteHeader />
         <main id="conteudo">{children}</main>
       </body>

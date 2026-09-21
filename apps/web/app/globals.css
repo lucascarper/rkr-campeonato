@@ -43,27 +43,67 @@ html {
 }
 
 body {
-  background-color: var(--bg);
-  /* Grade sutil de telemetria */
-  background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-position: -1px -1px;
-  background-attachment: fixed;
+  /* Sem fundo próprio: ele cobriria as linhas de velocidade (z-index -1). O fundo fica no html. */
   color: var(--text);
   font-family: var(--font-sans);
   min-height: 100dvh;
 }
 
-body::before {
-  /* Vinheta para a grade sumir nas bordas */
-  content: "";
+/* --- Fundo: linhas de velocidade --------------------------------------------------------------
+   Traços vermelhos finos cruzando a tela no ângulo do "R" da logo. Só CSS, animando transform
+   (composição na GPU); com prefers-reduced-motion ficam parados. Ver components/SpeedLines.tsx. */
+.speed-field {
   position: fixed;
   inset: 0;
-  pointer-events: none;
-  background: radial-gradient(ellipse at 50% 0%, transparent 0%, var(--bg) 75%);
   z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 45% at 0% 100%, rgba(225, 6, 19, 0.1), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(225, 6, 19, 0.06), transparent 70%), var(--bg);
+}
+.speed-field__track {
+  position: absolute;
+  inset: -40% -30%;
+  transform: rotate(-14deg);
+}
+.speed-line {
+  position: absolute;
+  left: 0;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, rgba(225, 6, 19, 0.85) 72%, #ff3b46 96%, #fff 100%);
+  opacity: var(--o);
+  transform: translateX(-60vw);
+  animation: speed-line var(--d) linear var(--delay) infinite;
+  will-change: transform;
+}
+.speed-line--bold {
+  height: 2px;
+  box-shadow:
+    0 0 14px var(--red-glow),
+    0 0 3px rgba(255, 59, 70, 0.8);
+}
+@keyframes speed-line {
+  from {
+    transform: translateX(-60vw);
+  }
+  to {
+    transform: translateX(190vw);
+  }
+}
+.speed-field::after {
+  /* Escurece o centro, onde fica o conteúdo, para as linhas não competirem com o texto */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 55% at 50% 50%, rgba(10, 10, 11, 0.45), transparent 85%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .speed-line {
+    animation: none !important;
+    transform: translateX(var(--rest));
+  }
 }
 
 ::selection {
