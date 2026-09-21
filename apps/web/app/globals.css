@@ -1,0 +1,243 @@
+@import "tailwindcss";
+
+/* Tokens de design (documentação: Identidade visual). Mude aqui e o site inteiro acompanha. */
+:root {
+  --bg: #0a0a0b;
+  --surface: #121215;
+  --surface-2: #18181c;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --red: #e10613;
+  --red-glow: rgba(225, 6, 19, 0.45);
+  --red-soft: rgba(225, 6, 19, 0.12);
+  --text: #ffffff;
+  --muted: #9a9aa3;
+  --faint: #5c5c66;
+  --fastest: #b14dff;
+  --up: #2bd97c;
+  --cut: 14px; /* tamanho do corte diagonal, eco do "R" da logo */
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-red: var(--red);
+  --color-red-soft: var(--red-soft);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-fastest: var(--fastest);
+  --color-up: var(--up);
+  --font-display: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-barlow-semi), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+html {
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  /* Grade sutil de telemetria */
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: -1px -1px;
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+}
+
+body::before {
+  /* Vinheta para a grade sumir nas bordas */
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, transparent 0%, var(--bg) 75%);
+  z-index: -1;
+}
+
+::selection {
+  background: var(--red);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+/* Canto cortado na diagonal (superior direito e inferior esquerdo), eco do ângulo do "R" */
+@utility cut {
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut))
+  );
+}
+@utility cut-sm {
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+}
+
+@layer components {
+  .display {
+    font-family: var(--font-display);
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    line-height: 0.9;
+  }
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .glow {
+    box-shadow:
+      0 0 0 1px var(--red),
+      0 0 24px var(--red-glow);
+  }
+  .outline-text {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14);
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Janela do piloto: painel deslizante no celular, painel central no desktop (Radix data-state). */
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes sheet-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes panel-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes spin-r {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.overlay[data-state="open"] {
+  animation: fade-in 200ms ease-out;
+}
+.overlay[data-state="closed"] {
+  animation: fade-out 160ms ease-in;
+}
+.sheet[data-state="open"] {
+  animation: sheet-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sheet[data-state="closed"] {
+  animation: sheet-out 220ms ease-in;
+}
+@media (min-width: 768px) {
+  .sheet[data-state="open"] {
+    animation: panel-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .sheet[data-state="closed"] {
+    animation: panel-out 180ms ease-in;
+  }
+}
+
+.glass {
+  background: rgba(10, 10, 12, 0.6);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid var(--line-strong);
+  box-shadow:
+    0 0 0 1px rgba(225, 6, 19, 0.15),
+    0 30px 80px -20px var(--red-glow);
+}
+
+/* Foto que se dissolve no painel em vez de aparecer inteira */
+.photo-fade {
+  -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
+}
+@media (min-width: 768px) {
+  .photo-fade {
+    -webkit-mask-image: linear-gradient(to right, #000 40%, transparent 100%);
+    mask-image: linear-gradient(to right, #000 40%, transparent 100%);
+  }
+}

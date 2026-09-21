@@ -1,0 +1,10 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+# Arquivos soltos recebidos da organização (cópias versionadas ficam em docs/)
+/*.xlsx
+/*.jpeg
+
+# Configuração local do editor/agente
+.claude/
