@@ -15,7 +15,7 @@ CACHE_FOREVER = "public, max-age=31536000, immutable"
 @require_GET
 def media_file(request, path: str):
     """Foto do piloto. Com ?format=jpeg, converte (o gerador de artes não lê WebP)."""
-    if ".." in path.split("/") or not path.startswith("drivers/"):
+    if ".." in path.split("/") or not path.startswith(("drivers/", "tracks/")):
         raise Http404
     try:
         handle = default_storage.open(path, "rb")

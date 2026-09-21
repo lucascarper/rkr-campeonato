@@ -1,9 +1,18 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 
+import {
+  API,
+  BG,
+  MUTED,
+  OFFICIAL_SITE,
+  RED,
+  SURFACE,
+  artHeaders,
+  fetchImage,
+  loadArtAssets,
+  longDate,
+} from "@/lib/art";
 import { parseCategory } from "@/lib/categories";
 import { formatPoints, initials } from "@/lib/format";
 
@@ -12,14 +21,6 @@ import { formatPoints, initials } from "@/lib/format";
  * GET /arte/podio?categoria=rk1&etapa=8[&bateria=Bateria A][&formato=feed|story][&download=1]
  * Feed: 1080×1350 (4:5). Story: 1080×1920 (9:16).
  */
-
-const API = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
-const RED = "#E10613";
-const BG = "#0A0A0B";
-const SURFACE = "#121215";
-const MUTED = "#9A9AA3";
-// Site oficial do campeonato, no rodapé das artes (pode ser trocado sem mexer no código).
-const OFFICIAL_SITE = process.env.NEXT_PUBLIC_OFFICIAL_SITE || "rkrbrasilia.com.br";
 
 type PodiumRow = {
   position: number;
@@ -35,58 +36,6 @@ type Podium = {
   race: { label: string; preseason: boolean };
   rows: PodiumRow[];
 };
-
-// --- recursos estáticos (lidos uma vez por processo) ---------------------------------------------
-
-let assets: Promise<{ fonts: Font[]; logo: string }> | null = null;
-type Font = { name: string; data: Buffer; weight: 500 | 600 | 700 | 800; style: "normal" | "italic" };
-
-function loadAssets() {
-  assets ??= (async () => {
-    const font = (pkg: string, file: string) =>
-      readFile(path.join(process.cwd(), "node_modules/@fontsource", pkg, "files", file));
-    const [condensed800, condensed700, semi500, semi600, mono500, mono700, logo] = await Promise.all([
-      font("barlow-condensed", "barlow-condensed-latin-800-italic.woff"),
-      font("barlow-condensed", "barlow-condensed-latin-700-italic.woff"),
-      font("barlow-semi-condensed", "barlow-semi-condensed-latin-500-normal.woff"),
-      font("barlow-semi-condensed", "barlow-semi-condensed-latin-600-normal.woff"),
-      font("jetbrains-mono", "jetbrains-mono-latin-500-normal.woff"),
-      font("jetbrains-mono", "jetbrains-mono-latin-700-normal.woff"),
-      readFile(path.join(process.cwd(), "public/brand/logo.png")),
-    ]);
-    return {
-      logo: `data:image/png;base64,${logo.toString("base64")}`,
-      fonts: [
-        { name: "Display", data: condensed800, weight: 800, style: "italic" },
-        { name: "Display", data: condensed700, weight: 700, style: "italic" },
-        { name: "Text", data: semi500, weight: 500, style: "normal" },
-        { name: "Text", data: semi600, weight: 600, style: "normal" },
-        { name: "Mono", data: mono500, weight: 500, style: "normal" },
-        { name: "Mono", data: mono700, weight: 700, style: "normal" },
-      ] satisfies Font[],
-    };
-  })();
-  return assets;
-}
-
-async function photoData(url: string | null): Promise<string | null> {
-  if (!url) return null;
-  try {
-    const response = await fetch(`${API}${url}`, { next: { revalidate: 3600 } });
-    if (!response.ok) return null;
-    const type = response.headers.get("content-type") ?? "image/jpeg";
-    return `data:${type};base64,${Buffer.from(await response.arrayBuffer()).toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
-
-const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
-function longDate(iso: string | null) {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  return `${String(d).padStart(2, "0")} ${MONTHS[m - 1]} ${y}`;
-}
 
 /** Foto 900×1200 cobrindo o cartão (o gerador não aceita backgroundSize: cover), com degradê embaixo. */
 const PHOTO_W = 900;
@@ -122,8 +71,10 @@ export async function GET(request: NextRequest) {
     return new Response("Pódio não encontrado para esta categoria/etapa.", { status: 404 });
   }
   const data = (await response.json()) as Podium;
-  const { fonts, logo } = await loadAssets();
-  const photos = await Promise.all(data.rows.slice(0, 3).map((row) => photoData(row.driver.photo_art)));
+  const { fonts, logo } = await loadArtAssets();
+  const photos = (
+    await Promise.all(data.rows.slice(0, 3).map((row) => fetchImage(row.driver.photo_art)))
+  ).map((img) => img?.data ?? null);
 
   const width = 1080;
   const height = story ? 1920 : 1350;
@@ -457,12 +408,8 @@ export async function GET(request: NextRequest) {
     { width, height, fonts },
   );
 
-  const headers = new Headers(image.headers);
-  headers.set("Cache-Control", "public, max-age=60");
-  if (params.get("download")) {
-    const race = data.race.preseason ? `-${data.race.label.toLowerCase().replace(/\s+/g, "-")}` : "";
-    const name = `rkr-podio-${category.toLowerCase()}-etapa-${data.event.number}${race}-${story ? "story" : "feed"}.png`;
-    headers.set("Content-Disposition", `attachment; filename="${name}"`);
-  }
+  const race = data.race.preseason ? `-${data.race.label.toLowerCase().replace(/\s+/g, "-")}` : "";
+  const filename = `rkr-podio-${category.toLowerCase()}-etapa-${data.event.number}${race}-${story ? "story" : "feed"}.png`;
+  const headers = artHeaders(image.headers, params.get("download") ? filename : null);
   return new Response(image.body, { status: image.status, headers });
 }

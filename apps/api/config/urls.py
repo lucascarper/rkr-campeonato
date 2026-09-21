@@ -19,6 +19,7 @@ urlpatterns = [
     api("dashboard", pub.dashboard, "dashboard"),
     api(r"drivers/(?P<slug>[-\w]+)", pub.driver_detail, "driver-detail"),
     api("podium", pub.podium, "podium"),
+    api("event-card", pub.event_card, "event-card"),
     api("admin/session", adm.session, "admin-session"),
     api("admin/login", adm.login_view, "admin-login"),
     api("admin/logout", adm.logout_view, "admin-logout"),
@@ -33,6 +34,8 @@ urlpatterns = [
     api(r"admin/drivers/(?P<pk>\d+)/merge", adm.driver_merge, "admin-driver-merge"),
     api("admin/events", adm.events, "admin-events"),
     api(r"admin/events/(?P<pk>\d+)", adm.event_update, "admin-event-update"),
+    api(r"admin/events/(?P<pk>\d+)/track", adm.event_track, "admin-event-track"),
+    api("admin/event-card", adm.event_card, "admin-event-card"),
     api("admin/rules", adm.rules, "admin-rules"),
     api("admin/recalculate", adm.recalculate, "admin-recalculate"),
     api("admin/categories", adm.categories, "admin-categories"),
@@ -40,5 +43,5 @@ urlpatterns = [
     re_path(r"^django-admin/", admin.site.urls),
 ]
 
-# Só as fotos dos pilotos são públicas; planilhas importadas ficam no mesmo storage e nunca são servidas.
-urlpatterns.append(re_path(r"^media/(?P<path>drivers/[-\w./]+)$", media_file, name="media-file"))
+# Só fotos de pilotos e traçados são públicos; as planilhas ficam no mesmo storage e nunca são servidas.
+urlpatterns.append(re_path(r"^media/(?P<path>(?:drivers|tracks)/[-\w./]+)$", media_file, name="media-file"))

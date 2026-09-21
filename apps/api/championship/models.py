@@ -83,6 +83,14 @@ class Event(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=SCHEDULED)
     is_preseason = models.BooleanField(default=False)
 
+    # Arte "Próxima etapa": horários ({"practice": "13:00", "RK3": "13:45", ...}), traçado e sentido.
+    CLOCKWISE, COUNTERCLOCKWISE = "cw", "ccw"
+    DIRECTION_CHOICES = [(CLOCKWISE, "Horário"), (COUNTERCLOCKWISE, "Anti-horário")]
+    schedule = models.JSONField(default=dict, blank=True)
+    track_direction = models.CharField(max_length=3, choices=DIRECTION_CHOICES, blank=True)
+    track_image = models.CharField(max_length=255, blank=True, help_text="Traçado original enviado")
+    track_art = models.CharField(max_length=255, blank=True, help_text="Traçado redesenhado para as artes")
+
     class Meta:
         ordering = ["season", "number"]
         constraints = [models.UniqueConstraint(fields=["season", "number"], name="uniq_event_number")]

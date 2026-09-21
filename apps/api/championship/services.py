@@ -57,6 +57,11 @@ def scoring_config(config: SeasonConfig) -> ScoringConfig:
     )
 
 
+def media_url(path: str) -> str | None:
+    """URL pública de um arquivo do storage (fotos e traçados), servida pela api quando o bucket é privado."""
+    return photo_url(path)
+
+
 def photo_url(path: str) -> str | None:
     if not path:
         return None
