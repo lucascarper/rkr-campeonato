@@ -152,17 +152,19 @@ function ProfileBody({
   setWithDiscard: (value: boolean) => void;
 }) {
   const { driver, stats } = profile;
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const shownPoints = withDiscard ? stats.points_with_discard : stats.points;
 
   return (
     <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto md:grid md:grid-cols-[minmax(260px,340px)_1fr] md:overflow-hidden">
       {/* Foto + identidade (fixa no desktop; só a coluna de dados rola) */}
       <div className="relative h-56 shrink-0 overflow-hidden md:h-full">
-        {driver.photo ? (
+        {driver.photo && failedPhoto !== driver.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={driver.photo}
             alt={`Foto de ${driver.name}`}
+            onError={() => setFailedPhoto(driver.photo)}
             className="photo-fade absolute inset-0 h-full w-full object-cover object-top"
           />
         ) : (

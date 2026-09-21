@@ -139,7 +139,10 @@ else:
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
     }
-SERVE_LOCAL_MEDIA = not S3_BUCKET
+# Fotos servidas pela própria api em /media/drivers/... (o Next repassa /media para cá). Necessário com
+# bucket privado (caso dos buckets da Railway) e com disco local. Com um domínio público/CDN na frente do
+# bucket (S3_PUBLIC_DOMAIN), o navegador busca direto nele.
+MEDIA_VIA_API = not (S3_BUCKET and os.environ.get("S3_PUBLIC_DOMAIN"))
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_BYTES + 512 * 1024

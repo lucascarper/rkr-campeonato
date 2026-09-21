@@ -184,3 +184,30 @@ def test_internal_request_with_port(client, settings, imported):
         "/api/standings/?category=RK1", HTTP_HOST="rkr-campeonato-api.railway.internal:8000"
     )
     assert response.status_code == 200
+
+
+def test_photo_served_through_api(admin_client, client, imported, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    settings.MEDIA_VIA_API = True
+    buffer = io.BytesIO()
+    Image.new("RGB", (600, 800), "blue").save(buffer, "JPEG")
+    buffer.name = "foto.jpg"
+    buffer.seek(0)
+    driver = Driver.objects.get(slug="ed-junior")
+    data = admin_client.post(f"/api/admin/drivers/{driver.id}/photo/", {"photo": buffer}).json()
+    assert data["thumb_url"].startswith("/media/drivers/ed-junior/")
+    cache.clear()
+    public = client.get("/api/drivers/ed-junior/").json()["driver"]
+    assert public["photo"].startswith("/media/drivers/ed-junior/") and public["photo"].endswith("-lg.webp")
+    response = client.get(public["photo"])
+    assert response.status_code == 200
+    assert response["Content-Type"] == "image/webp"
+    assert "immutable" in response["Cache-Control"]
+    with Image.open(io.BytesIO(b"".join(response.streaming_content))) as img:
+        assert img.size == (900, 1200)
+
+
+def test_media_does_not_expose_spreadsheets(client, imported):
+    assert client.get("/media/imports/2026/09/rkr-2026-etapa-8.xlsx").status_code == 404
+    assert client.get("/media/drivers/../imports/x.xlsx").status_code == 404
+    assert client.get("/media/drivers/nao-existe/abc-lg.webp").status_code == 404

@@ -58,7 +58,11 @@ def scoring_config(config: SeasonConfig) -> ScoringConfig:
 
 
 def photo_url(path: str) -> str | None:
-    return default_storage.url(path) if path else None
+    if not path:
+        return None
+    if settings.MEDIA_VIA_API:
+        return f"{settings.MEDIA_URL}{path}"  # mesma origem do site; o Next repassa /media à api
+    return default_storage.url(path)
 
 
 def effective_categories(season: Season) -> dict[int, int]:

@@ -1,8 +1,11 @@
+"use client";
+
 import clsx from "clsx";
+import { useState } from "react";
 
 import { initials } from "@/lib/format";
 
-/** Miniatura do piloto; sem foto, mostra as iniciais sobre um traço vermelho diagonal. */
+/** Miniatura do piloto; sem foto (ou se ela não carregar), mostra as iniciais sobre um traço vermelho. */
 export function DriverAvatar({
   name,
   photo,
@@ -14,6 +17,8 @@ export function DriverAvatar({
   size?: number;
   className?: string;
 }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const showPhoto = photo && failed !== photo;
   return (
     <span
       className={clsx(
@@ -22,7 +27,7 @@ export function DriverAvatar({
       )}
       style={{ width: size, height: size }}
     >
-      {photo ? (
+      {showPhoto ? (
         // Fotos já chegam recortadas em WebP pelo backend (Pillow), por isso <img> simples.
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -32,6 +37,7 @@ export function DriverAvatar({
           height={size}
           loading="lazy"
           decoding="async"
+          onError={() => setFailed(photo)}
           className="h-full w-full object-cover"
         />
       ) : (

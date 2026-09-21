@@ -133,7 +133,7 @@ pela rede privada (mesma origem, sem CORS, cookie de sessão seguro).
 | Imagem | Onde fica | Por quê |
 | --- | --- | --- |
 | **Logo e símbolo** | `apps/web/public/brand/logo.png` e `r-mark.png` (versionados no Git) | Servidos pelo próprio Next com cache de CDN; mudam raramente. Favicon em `apps/web/app/icon.png` e `apple-icon.png`. |
-| **Fotos dos pilotos** | **Bucket S3** (variáveis `S3_*` na api), enviadas pelo painel em Pilotos → Enviar foto | Ficam fora do contêiner (que é apagado a cada deploy), são servidas direto do bucket/CDN e não passam pelo servidor. |
+| **Fotos dos pilotos** | **Bucket S3** (variáveis `S3_*` na api), enviadas pelo painel em Pilotos → Enviar foto | Ficam fora do contêiner (que é apagado a cada deploy). O site as entrega em `/media/drivers/...` (a api lê do bucket, que pode ser privado); com `S3_PUBLIC_DOMAIN`, o navegador busca direto no CDN. |
 | Planilhas importadas | Mesmo storage das fotos, pasta `imports/` | Auditoria de cada importação. |
 
 Não coloque fotos de pilotos em `public/` nem no repositório: elas mudam ao longo do ano, dependem de
@@ -144,8 +144,10 @@ autorização de uso e deixariam o deploy pesado. Envie sempre pelo painel. O si
 - nomeia os arquivos com um hash (`drivers/<slug>/<hash>-thumb.webp`), então o bucket pode servir com
   `Cache-Control: public, max-age=31536000, immutable`. Foto nova gera URL nova, sem cache velho.
 
-Para o melhor desempenho, coloque um domínio/CDN na frente do bucket (ex.: `fotos.rkr.com.br`) e informe-o
-em `S3_PUBLIC_DOMAIN` (api) e `NEXT_PUBLIC_PHOTO_HOST` (web). Sem bucket, é possível usar um **volume da
+Buckets da Railway são privados: as fotos passam pela api (`/media/drivers/...`), com cache de 1 ano no
+navegador. Só fotos de pilotos são servidas por essa rota; as planilhas guardadas no bucket nunca ficam
+acessíveis. Se no futuro houver um domínio/CDN público na frente do bucket (ex.: `fotos.rkr.com.br`),
+informe-o em `S3_PUBLIC_DOMAIN` (api) e `NEXT_PUBLIC_PHOTO_HOST` (web) para o navegador buscar direto nele. Sem bucket, é possível usar um **volume da
 Railway** montado em `/data` com `MEDIA_ROOT=/data/media`; funciona, mas as fotos passam pelo Django.
 
 A logo recebida é um JPEG de 664×163 px com fundo preto. O sistema usa uma versão com fundo removido

@@ -1,10 +1,9 @@
-from django.conf import settings
 from django.contrib import admin
 from django.urls import re_path
-from django.views.static import serve
 
 from championship import views_admin as adm
 from championship import views_public as pub
+from championship.media import media_file
 
 
 def api(pattern: str, view, name: str):
@@ -40,8 +39,5 @@ urlpatterns = [
     re_path(r"^django-admin/", admin.site.urls),
 ]
 
-if settings.SERVE_LOCAL_MEDIA:
-    # Sem bucket, as fotos saem do disco (volume da Railway). Com bucket, vêm direto do S3.
-    urlpatterns.append(
-        re_path(r"^media/(?P<path>drivers/.*)$", serve, {"document_root": settings.MEDIA_ROOT})
-    )
+# Só as fotos dos pilotos são públicas; planilhas importadas ficam no mesmo storage e nunca são servidas.
+urlpatterns.append(re_path(r"^media/(?P<path>drivers/[-\w./]+)$", media_file, name="media-file"))
