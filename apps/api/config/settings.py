@@ -26,7 +26,11 @@ if not SECRET_KEY:
     raise RuntimeError("Defina DJANGO_SECRET_KEY (ou DJANGO_DEBUG=true para desenvolvimento).")
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.railway.internal")
-CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "http://localhost:3000")
+# O Django exige o protocolo; "rkr.com.br" vira "https://rkr.com.br".
+CSRF_TRUSTED_ORIGINS = [
+    origin if "://" in origin else f"https://{origin}"
+    for origin in env_list("CSRF_TRUSTED_ORIGINS", "http://localhost:3000")
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",

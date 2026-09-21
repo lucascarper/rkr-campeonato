@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Barlow_Semi_Condensed, JetBrains_Mono } from "next/font/google";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import { siteUrl } from "@/lib/site";
 
 import "./globals.css";
 
@@ -26,7 +27,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: siteUrl(),
   title: { default: "RKR Kart Racing — Campeonato", template: "%s · RKR Kart Racing" },
   description: "Classificação, estatísticas e trajetória dos pilotos do campeonato de Kart Rental RKR.",
   openGraph: { siteName: "RKR Kart Racing", locale: "pt_BR", type: "website" },
