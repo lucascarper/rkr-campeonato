@@ -8,12 +8,9 @@
     ]
   },
   "deploy": {
-    "startCommand": "gunicorn config.wsgi --bind [::]:$PORT --workers 2 --threads 4 --timeout 60 --access-logfile -",
-    "preDeployCommand": [
-      "python manage.py release"
-    ],
+    "startCommand": "python manage.py release && exec gunicorn config.wsgi --bind [::]:$PORT --workers 2 --threads 4 --timeout 60 --access-logfile -",
     "healthcheckPath": "/api/health/",
-    "healthcheckTimeout": 60,
+    "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE"
   }
 }

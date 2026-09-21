@@ -83,7 +83,9 @@ e só as novas ou alteradas são gravadas.
 ## Deploy na Railway
 
 Um projeto com os serviços **web** (`apps/web`), **api** (`apps/api`), **Postgres** e um **bucket**.
-Cada pasta tem seu `railway.json` (build, start, pré-deploy `python manage.py release` e healthcheck).
+Cada pasta tem seu `railway.json` (build, start e healthcheck). A api roda `python manage.py release`
+(migrações, carga inicial e recálculo) no próprio comando de start, antes do gunicorn: não depende do
+pré-deploy da Railway, que não estava sendo executado.
 Em cada serviço, em **Settings**, configure:
 
 | Serviço | Root Directory | Config-as-code (Railway Config File) |
@@ -92,9 +94,8 @@ Em cada serviço, em **Settings**, configure:
 | web | `/apps/web` | `/apps/web/railway.json` |
 
 O caminho do arquivo de configuração **não segue o Root Directory**: sem ele, a Railway ignora o
-`railway.json`, o pré-deploy não roda e o banco fica sem tabelas (`relation "auth_user" does not exist`).
-O `release` aplica as migrações, cria a temporada com as regras e o primeiro administrador; é seguro
-rodá-lo a cada deploy.
+`railway.json` e a api sobe sem migrar o banco (`relation ... does not exist`). O `release` é seguro a
+cada início: migrações já aplicadas são ignoradas e a carga inicial não duplica dados.
 
 | Serviço | Variável | Valor |
 | --- | --- | --- |
