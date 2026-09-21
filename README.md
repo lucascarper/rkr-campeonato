@@ -83,8 +83,18 @@ e só as novas ou alteradas são gravadas.
 ## Deploy na Railway
 
 Um projeto com os serviços **web** (`apps/web`), **api** (`apps/api`), **Postgres** e um **bucket**.
-Cada pasta tem seu `railway.json` (build, start, pré-deploy com `migrate` + `bootstrap` e healthcheck).
-Em cada serviço, configure o *Root Directory* para a pasta correspondente.
+Cada pasta tem seu `railway.json` (build, start, pré-deploy `python manage.py release` e healthcheck).
+Em cada serviço, em **Settings**, configure:
+
+| Serviço | Root Directory | Config-as-code (Railway Config File) |
+| --- | --- | --- |
+| api | `/apps/api` | `/apps/api/railway.json` |
+| web | `/apps/web` | `/apps/web/railway.json` |
+
+O caminho do arquivo de configuração **não segue o Root Directory**: sem ele, a Railway ignora o
+`railway.json`, o pré-deploy não roda e o banco fica sem tabelas (`relation "auth_user" does not exist`).
+O `release` aplica as migrações, cria a temporada com as regras e o primeiro administrador; é seguro
+rodá-lo a cada deploy.
 
 | Serviço | Variável | Valor |
 | --- | --- | --- |

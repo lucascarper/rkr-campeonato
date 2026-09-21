@@ -119,3 +119,18 @@ def test_login_through_proxy_with_public_domain(client, django_user_model, setti
     assert "rkr-web.up.railway.app" in settings.ALLOWED_HOSTS
     response = client.post("/api/admin/login/", {"username": "adm", "password": "certa-123456!"}, **headers)
     assert response.status_code == 200, response.content
+
+
+def test_release_is_idempotent(db, monkeypatch):
+    from django.core.management import call_command
+
+    from championship.models import ScoringTable
+
+    monkeypatch.setenv("DJANGO_SUPERUSER_USERNAME", "org")
+    monkeypatch.setenv("DJANGO_SUPERUSER_PASSWORD", "senha-forte-123!")
+    call_command("release", verbosity=0)
+    call_command("release", verbosity=0)
+    from django.contrib.auth import get_user_model
+
+    assert get_user_model().objects.filter(username="org", is_staff=True).count() == 1
+    assert ScoringTable.objects.count() == 2
