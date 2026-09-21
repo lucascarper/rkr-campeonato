@@ -3,6 +3,7 @@
 import difflib
 import hashlib
 import json
+import logging
 from collections import defaultdict
 
 from django.core.files.base import ContentFile
@@ -29,6 +30,7 @@ from rules.types import FIN
 from .parsers import ImportFormatError, ParsedImport, parse_file, validate
 
 SUGGESTION_CUTOFF = 0.8
+logger = logging.getLogger(__name__)
 
 
 class ImportFlowError(Exception):
@@ -55,7 +57,23 @@ def preview(filename: str, content: bytes, author) -> ImportBatch:
         payload=payload,
         report=report,
     )
-    batch.file.save(filename, ContentFile(content), save=True)
+    try:
+        batch.file.save(filename, ContentFile(content), save=True)
+    except Exception as exc:  # bucket indisponível ou mal configurado não pode travar a importação
+        logger.exception("Falha ao guardar a planilha %s no storage", filename)
+        batch.report["issues"].append(
+            {
+                "level": "warning",
+                "message": "A cópia da planilha não foi guardada para auditoria (erro no armazenamento de "
+                f"arquivos: {type(exc).__name__}). A importação funciona normalmente; "
+                "confira as variáveis S3_* da api.",
+                "sheet": "",
+                "line": None,
+                "column": "",
+            }
+        )
+        batch.report["warnings"] += 1
+        batch.save(update_fields=["report"])
     return batch
 
 

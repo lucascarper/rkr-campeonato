@@ -107,7 +107,7 @@ rodá-lo a cada deploy.
 | api | `DJANGO_ALLOWED_HOSTS` | `.railway.internal,rkr.com.br` (domínio público do site incluído) |
 | api | `CSRF_TRUSTED_ORIGINS` | `https://rkr.com.br` |
 | api | `DJANGO_SUPERUSER_USERNAME` / `DJANGO_SUPERUSER_PASSWORD` | primeiro administrador (senha com 12+ caracteres) |
-| api | `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_PUBLIC_DOMAIN` | bucket de fotos |
+| api | `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`, `S3_PUBLIC_DOMAIN` | bucket de fotos (ver abaixo) |
 | api | `PORT` | `8000` (defina explicitamente, para o web conseguir referenciar) |
 | api | `WEB_REVALIDATE_URL` | `http://${{<serviço-web>.RAILWAY_PRIVATE_DOMAIN}}:${{<serviço-web>.PORT}}/revalidate` |
 | web | `PORT` | `3000` (defina explicitamente, para a api conseguir referenciar) |
@@ -118,6 +118,12 @@ rodá-lo a cada deploy.
 Se o nome não bater, ou se `PORT` não estiver definida no serviço referenciado, a referência vira vazia e
 o build do web falha com "API_INTERNAL_URL inválida". Como as rotas `/api` são gravadas no build, qualquer
 mudança em `API_INTERNAL_URL` exige um novo deploy do web.
+
+**Bucket:** copie nome, endpoint, chave de acesso, chave secreta e região das credenciais do bucket.
+`S3_ENDPOINT` é obrigatório fora da AWS (bucket da Railway, Cloudflare R2, etc.): sem ele as chaves vão
+para a AWS e o erro é `InvalidAccessKeyId`. Para testar, rode no shell da api:
+`python manage.py check_storage`. Uma falha no bucket não impede a importação de planilhas (vira aviso),
+mas impede o envio de fotos.
 
 A api não precisa de domínio público: o navegador fala só com o web, que repassa `/api/*` e `/media/*`
 pela rede privada (mesma origem, sem CORS, cookie de sessão seguro).

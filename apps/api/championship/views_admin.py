@@ -1,5 +1,7 @@
 """Endpoints administrativos: exigem sessão de usuário staff e token CSRF."""
 
+import logging
+
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.core.cache import cache
@@ -29,6 +31,8 @@ from .models import (
     SeasonConfig,
 )
 from .photos import PhotoError, save_driver_photo
+
+logger = logging.getLogger(__name__)
 
 # --- sessão -------------------------------------------------------------------------------------
 
@@ -237,6 +241,16 @@ def driver_photo(request, pk: int):
         save_driver_photo(driver, upload)
     except PhotoError as exc:
         return Response({"detail": str(exc)}, status=400)
+    except Exception:
+        logger.exception("Falha ao gravar a foto do piloto %s no storage", driver.pk)
+        return Response(
+            {
+                "detail": "A foto não pôde ser gravada no armazenamento de arquivos. "
+                "Confira as variáveis S3_* da api "
+                "(teste com 'python manage.py check_storage' no shell da api)."
+            },
+            status=502,
+        )
     cache.clear()
     services.revalidate_web()
     return Response(DriverSerializer(driver).data)

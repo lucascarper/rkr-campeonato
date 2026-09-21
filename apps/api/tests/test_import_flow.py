@@ -118,3 +118,17 @@ def test_blocking_errors_prevent_confirm(imported):
     assert batch.report["errors"] > 0
     with pytest.raises(service.ImportFlowError):
         service.confirm(batch, {})
+
+
+def test_preview_survives_storage_failure(season, monkeypatch):
+    """Bucket mal configurado não pode impedir a importação: vira aviso na pré-visualização."""
+
+    def broken_save(*args, **kwargs):
+        raise RuntimeError("InvalidAccessKeyId")
+
+    monkeypatch.setattr(ImportBatch._meta.get_field("file").storage, "save", broken_save)
+    batch = service.preview(WORKBOOK.name, WORKBOOK.read_bytes(), None)
+    assert batch.report["errors"] == 0
+    assert any("auditoria" in i["message"] for i in batch.report["issues"])
+    service.confirm(batch, {})
+    assert RaceResult.objects.filter(active=True).count() == 332

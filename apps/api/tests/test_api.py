@@ -134,3 +134,27 @@ def test_release_is_idempotent(db, monkeypatch):
 
     assert get_user_model().objects.filter(username="org", is_staff=True).count() == 1
     assert ScoringTable.objects.count() == 2
+
+
+def test_photo_storage_failure_returns_clear_error(admin_client, imported, monkeypatch):
+    from championship import photos
+
+    def broken_save(*args, **kwargs):
+        raise RuntimeError("InvalidAccessKeyId")
+
+    monkeypatch.setattr(photos.default_storage, "save", broken_save)
+    buffer = io.BytesIO()
+    Image.new("RGB", (300, 400), "red").save(buffer, "JPEG")
+    buffer.name = "foto.jpg"
+    buffer.seek(0)
+    driver = Driver.objects.get(slug="ed-junior")
+    response = admin_client.post(f"/api/admin/drivers/{driver.id}/photo/", {"photo": buffer})
+    assert response.status_code == 502
+    assert "S3_" in response.json()["detail"]
+
+
+def test_check_storage_command(db, capsys):
+    from django.core.management import call_command
+
+    call_command("check_storage")
+    assert "OK: gravou, leu e apagou" in capsys.readouterr().out
