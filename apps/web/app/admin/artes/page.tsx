@@ -1,10 +1,8 @@
 "use client";
 
-import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 
 import { Field, Notice, PageTitle, inputClass } from "@/components/admin/ui";
-import { NextEventArt } from "@/components/admin/NextEventArt";
 import { CATEGORIES } from "@/lib/categories";
 import { fetchJSON } from "@/lib/client";
 import { formatDate } from "@/lib/format";
@@ -21,7 +19,7 @@ const FORMATS = {
   story: { label: "Stories (1080×1920)", ratio: "9 / 16" },
 } as const;
 
-function PodiumArt() {
+export default function ArtsPage() {
   const [category, setCategory] = useState<string>("RK1");
   const [event, setEvent] = useState<number | null>(null);
   const [race, setRace] = useState<string | null>(null);
@@ -61,6 +59,7 @@ function PodiumArt() {
 
   return (
     <div className="max-w-6xl">
+      <PageTitle title="Artes para redes sociais" />
       <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
         <div className="flex flex-col gap-4">
           <Field label="Categoria">
@@ -186,37 +185,6 @@ function PodiumArt() {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-export default function ArtsPage() {
-  const [tab, setTab] = useState<"podium" | "next">("podium");
-  return (
-    <div>
-      <PageTitle title="Artes para redes sociais" />
-      <div role="tablist" aria-label="Tipo de arte" className="mb-6 flex gap-1 border-b border-line">
-        {(
-          [
-            ["podium", "Pódio da etapa"],
-            ["next", "Próxima etapa"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={clsx(
-              "-mb-px border-b-2 px-4 py-2 text-sm transition-colors",
-              tab === key ? "border-red text-text" : "border-transparent text-muted hover:text-text",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === "podium" ? <PodiumArt /> : <NextEventArt />}
     </div>
   );
 }

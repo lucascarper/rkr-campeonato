@@ -1,12 +1,10 @@
 """Endpoints administrativos: exigem sessão de usuário staff e token CSRF."""
 
 import logging
-import re
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.core.cache import cache
-from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
@@ -33,7 +31,6 @@ from .models import (
     SeasonConfig,
 )
 from .photos import PhotoError, save_driver_photo
-from .tracks import TrackError, save_event_track
 
 logger = logging.getLogger(__name__)
 
@@ -289,51 +286,13 @@ def driver_merge(request, pk: int):
 # --- etapas -------------------------------------------------------------------------------------
 
 
-SCHEDULE_KEYS = ("practice", "RK3", "RK2", "RK1")
-TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
-
-
 class EventSerializer(serializers.ModelSerializer):
     races = serializers.SerializerMethodField()
-    track_url = serializers.SerializerMethodField()
-    track_art_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
-        fields = [
-            "id",
-            "number",
-            "date",
-            "location",
-            "status",
-            "is_preseason",
-            "races",
-            "schedule",
-            "track_direction",
-            "track_url",
-            "track_art_url",
-        ]
+        fields = ["id", "number", "date", "location", "status", "is_preseason", "races"]
         read_only_fields = ["number"]
-
-    def validate_schedule(self, value):
-        if not isinstance(value, dict):
-            raise serializers.ValidationError("Horários inválidos.")
-        clean = {}
-        for key, time in value.items():
-            if key not in SCHEDULE_KEYS:
-                raise serializers.ValidationError(f"Horário desconhecido: {key}")
-            if time in (None, ""):
-                continue
-            if not TIME_RE.match(str(time)):
-                raise serializers.ValidationError(f"Use HH:MM no horário de {key}.")
-            clean[key] = str(time)
-        return clean
-
-    def get_track_url(self, obj):
-        return services.media_url(obj.track_image)
-
-    def get_track_art_url(self, obj):
-        return services.media_url(obj.track_art)
 
     def get_races(self, obj):
         return [
@@ -355,63 +314,6 @@ def events(request):
     if not season:
         return Response([])
     return Response(EventSerializer(season.events.all(), many=True).data)
-
-
-@api_view(["POST"])
-@permission_classes([IsAdminUser])
-@parser_classes([JSONParser])
-def event_card(request):
-    """Cria ou atualiza a etapa pelos dados da arte "Próxima etapa".
-
-    A planilha só é importada depois da corrida, então a etapa pode ainda não existir.
-    Corpo: {number, date, location, schedule: {practice, RK3, RK2, RK1}, track_direction}.
-    """
-    season = services.current_season(request.data.get("season"))
-    if not season:
-        return Response({"detail": "Nenhuma temporada cadastrada."}, status=404)
-    try:
-        number = int(request.data.get("number"))
-    except (TypeError, ValueError):
-        return Response({"number": ["Informe o número da etapa."]}, status=400)
-    if not 1 <= number <= 99:
-        return Response({"number": ["Número de etapa inválido."]}, status=400)
-    event = Event.objects.filter(season=season, number=number).first() or Event(season=season, number=number)
-    data = {
-        k: request.data[k] for k in ("date", "location", "schedule", "track_direction") if k in request.data
-    }
-    serializer = EventSerializer(event, data=data, partial=True)
-    serializer.is_valid(raise_exception=True)
-    serializer.save(season=season, number=number)
-    cache.clear()
-    return Response(serializer.data)
-
-
-@api_view(["POST", "DELETE"])
-@permission_classes([IsAdminUser])
-@parser_classes([MultiPartParser])
-def event_track(request, pk: int):
-    """Envia (POST, campo 'track') ou remove (DELETE) o traçado da etapa."""
-    event = get_object_or_404(Event, pk=pk)
-    if request.method == "DELETE":
-        for path in (event.track_image, event.track_art):
-            if path:
-                default_storage.delete(path)
-        event.track_image = event.track_art = ""
-        event.save(update_fields=["track_image", "track_art"])
-        return Response(EventSerializer(event).data)
-    upload = request.FILES.get("track")
-    if not upload:
-        return Response({"detail": "Envie o traçado no campo 'track'."}, status=400)
-    try:
-        save_event_track(event, upload)
-    except TrackError as exc:
-        return Response({"detail": str(exc)}, status=400)
-    except Exception:
-        logger.exception("Falha ao gravar o traçado da etapa %s", event.pk)
-        return Response(
-            {"detail": "O traçado não pôde ser gravado no armazenamento de arquivos."}, status=502
-        )
-    return Response(EventSerializer(event).data)
 
 
 @api_view(["PATCH"])

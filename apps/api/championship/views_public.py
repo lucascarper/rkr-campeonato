@@ -389,34 +389,3 @@ def _podium(season, category, event_number, race_label):
         "events": available,
         "rows": rows,
     }
-
-
-# --- arte da próxima etapa -----------------------------------------------------------------------
-
-
-@api_view(["GET"])
-def event_card(request):
-    """Dados da arte "Próxima etapa": horários, traçado e sentido.
-
-    Sem `event`, usa a próxima etapa agendada (ou a última, se todas já aconteceram).
-    """
-    season = _season(request)
-    events = list(season.events.all())
-    if not events:
-        raise Http404("Nenhuma etapa cadastrada")
-    number = _int_param(request, "event")
-    event = next((e for e in events if e.number == number), None)
-    if event is None:
-        upcoming = [e for e in events if e.status == Event.SCHEDULED]
-        event = upcoming[0] if upcoming else events[-1]
-    return Response(
-        {
-            "season": season.year,
-            "id": event.id,
-            "event": _event_payload(event),
-            "schedule": event.schedule or {},
-            "track_direction": event.track_direction,
-            "track_art": f"{settings.MEDIA_URL}{event.track_art}" if event.track_art else None,
-            "events": [_event_payload(e) for e in events],
-        }
-    )

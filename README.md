@@ -80,19 +80,6 @@ cd apps/web && npx playwright install chromium && npm run build && npm run test:
 Reenviar a planilha acumulada (Etapa 8, depois Etapa 9…) é o fluxo esperado: corridas iguais são ignoradas
 e só as novas ou alteradas são gravadas.
 
-## Artes para redes sociais
-
-No painel, **Artes** gera PNGs prontos para post (feed 1080×1350 ou stories 1080×1920), com a logo e a
-identidade do site:
-
-- **Pódio da etapa** (`/arte/podio`): os 3 primeiros com foto e o 4º e o 5º com o nome, a partir dos
-  resultados importados. Na pré-temporada, escolha a bateria.
-- **Próxima etapa** (`/arte/proxima-etapa`): número, local, data, horários de treino, RK3, RK2 e RK1,
-  traçado e sentido. Tudo é digitado no painel, porque a planilha só é importada depois da corrida;
-  salvar cria a etapa se ela ainda não existir. O traçado enviado (PNG, JPG ou WebP) é redesenhado
-  automaticamente: a linha da pista vira branca com brilho vermelho, seja qual for o estilo original.
-  Envie só o desenho da pista, sem textos.
-
 ## Deploy na Railway
 
 Um projeto com os serviços **web** (`apps/web`), **api** (`apps/api`), **Postgres** e um **bucket**.

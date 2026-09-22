@@ -83,7 +83,8 @@ class Event(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=SCHEDULED)
     is_preseason = models.BooleanField(default=False)
 
-    # Arte "Próxima etapa": horários ({"practice": "13:00", "RK3": "13:45", ...}), traçado e sentido.
+    # Reservados para a arte "Próxima etapa", guardada na branch feature/arte-proxima-etapa.
+    # Ficam no banco (sem uso) para preservar o que já foi preenchido e facilitar a volta da funcionalidade.
     CLOCKWISE, COUNTERCLOCKWISE = "cw", "ccw"
     DIRECTION_CHOICES = [(CLOCKWISE, "Horário"), (COUNTERCLOCKWISE, "Anti-horário")]
     schedule = models.JSONField(default=dict, blank=True)
