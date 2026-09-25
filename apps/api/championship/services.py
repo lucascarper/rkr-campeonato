@@ -265,6 +265,7 @@ def driver_payload(driver: Driver, *, large: bool = False) -> dict:
             "nickname": "",
             "number": None,
             "photo": None,
+            "photo_lg": None,
             "hidden": True,
         }
     return {
@@ -274,6 +275,8 @@ def driver_payload(driver: Driver, *, large: bool = False) -> dict:
         "nickname": driver.nickname,
         "number": driver.number,
         "photo": photo_url(driver.photo if large else driver.photo_thumb),
+        # Versão grande para as peças em que a foto aparece maior (faixa do pódio, dashboard).
+        "photo_lg": photo_url(driver.photo),
         "hidden": False,
     }
 

@@ -9,6 +9,8 @@ export interface DriverRef {
   nickname: string;
   number: number | null;
   photo: string | null;
+  /** Foto grande (900×1200), usada na faixa do pódio e nos cartões do dashboard. */
+  photo_lg: string | null;
   hidden: boolean;
 }
 

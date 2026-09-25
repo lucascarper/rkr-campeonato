@@ -40,12 +40,15 @@ export function Field({
 }
 
 export const inputClass =
-  "border border-line-strong bg-bg px-3 py-2 text-sm outline-none placeholder:text-faint focus:border-red";
+  "cut-sm border border-line-strong bg-bg px-3 py-2 text-sm outline-none placeholder:text-faint focus:border-red";
 
 export function PageTitle({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <h1 className="display text-4xl font-extrabold">{title}</h1>
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
+      <h1 className="display flex items-center gap-3 text-4xl font-extrabold">
+        <span aria-hidden className="h-7 w-1 bg-red shadow-[0_0_10px_var(--red-glow)]" />
+        {title}
+      </h1>
       {children}
     </div>
   );

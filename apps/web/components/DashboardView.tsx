@@ -9,6 +9,7 @@ import type { Dashboard, RankEntry } from "@/lib/types";
 import { useDriverParam } from "@/lib/useDriverParam";
 
 import { CountUp } from "./CountUp";
+import { Reveal } from "./Reveal";
 import { DriverModal } from "./DriverModal";
 import { CHART_THEME, EChart } from "./EChart";
 import { TopBars } from "./TopBars";
@@ -41,6 +42,8 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
   };
 
   const hover = useCallback((slug: string) => prefetchDriver(slug, category), [category]);
+  const photo = (entry?: RankEntry) =>
+    entry ? (data.drivers[String(entry.driver_id)]?.photo_lg ?? null) : null;
   const name = (entry?: RankEntry) => (entry ? (data.drivers[String(entry.driver_id)]?.name ?? "—") : "—");
 
   // Navegação entre pilotos na janela segue a ordem da classificação (linhas do mapa de resultados).
@@ -94,6 +97,7 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
           <IndicatorCard
             label="Mais voltas rápidas"
             leader={name(indicators.fastest_laps.top[0])}
+            photo={photo(indicators.fastest_laps.top[0])}
             value={indicators.fastest_laps.top[0]?.value ?? 0}
             unit="VR"
             tone="fastest"
@@ -103,6 +107,7 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
           <IndicatorCard
             label="Mais vitórias"
             leader={name(indicators.wins.top[0])}
+            photo={photo(indicators.wins.top[0])}
             value={indicators.wins.top[0]?.value ?? 0}
             unit="vitórias"
           >
@@ -115,6 +120,7 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
           <IndicatorCard
             label={`Mais consistente · top ${indicators.consistency.n}`}
             leader={name(indicators.consistency.top[0])}
+            photo={photo(indicators.consistency.top[0])}
             value={indicators.consistency.top[0]?.value ?? 0}
             unit="%"
             decimals
@@ -130,6 +136,7 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
           <IndicatorCard
             label="Penalizações na categoria"
             leader={`${formatDecimal(indicators.penalties.total_seconds, 0)} s acumulados`}
+            photo={photo(indicators.penalties.top[0])}
             value={indicators.penalties.total}
             unit="no total"
           >
@@ -144,23 +151,38 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
 
         {/* Estatísticas extras: cartões sem dado na planilha não aparecem */}
         <h2 className="display mt-14 text-3xl font-extrabold">Mais números</h2>
-        <div className="mt-4 grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
-          <ExtraCard title="Pódios" note={`Chegadas entre os ${data.podium_positions} primeiros`}>
+        <div className="mt-4 grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-6">
+          <ExtraCard
+            title="Pódios"
+            span={3}
+            delay={0}
+            note={`Chegadas entre os ${data.podium_positions} primeiros`}
+          >
             <TopBars entries={extras.podiums} {...bars} />
           </ExtraCard>
-          <ExtraCard title="Posição média de chegada" note="Menor é melhor · mínimo de 50% das corridas">
+          <ExtraCard
+            title="Posição média de chegada"
+            span={3}
+            delay={0.05}
+            note="Menor é melhor · mínimo de 50% das corridas"
+          >
             <TopBars entries={extras.avg_position} format={(v) => formatDecimal(v)} lowerIsBetter {...bars} />
           </ExtraCard>
           {extras.poles && (
-            <ExtraCard title="Poles">
+            <ExtraCard title="Poles" span={2} delay={0}>
               <TopBars entries={extras.poles} {...bars} />
             </ExtraCard>
           )}
-          <ExtraCard title="Pontos por corrida" note="Mínimo de 50% das corridas">
+          <ExtraCard title="Pontos por corrida" span={2} delay={0.05} note="Mínimo de 50% das corridas">
             <TopBars entries={extras.points_per_race} format={(v) => formatDecimal(v)} {...bars} />
           </ExtraCard>
           {extras.completion_rate && (
-            <ExtraCard title="Taxa de conclusão" note="Corridas terminadas, sem abandono ou desclassificação">
+            <ExtraCard
+              title="Taxa de conclusão"
+              span={2}
+              delay={0.1}
+              note="Corridas terminadas, sem abandono ou desclassificação"
+            >
               <TopBars entries={extras.completion_rate} format={(v) => `${formatDecimal(v, 0)}%`} {...bars} />
             </ExtraCard>
           )}
@@ -174,15 +196,17 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
             </ExtraCard>
           )}
           {extras.best_lap && (
-            <ExtraCard title="Melhor volta" note="Menor tempo de volta no intervalo">
+            <ExtraCard title="Melhor volta" span={2} delay={0} note="Menor tempo de volta no intervalo">
               <TopBars entries={extras.best_lap} format={(v) => formatLap(v)} lowerIsBetter {...bars} />
             </ExtraCard>
           )}
-          <ExtraCard title="Maior sequência pontuando">
+          <ExtraCard title="Maior sequência pontuando" span={2} delay={0.05}>
             <TopBars entries={extras.streaks.points} format={(v) => `${v} seguidas`} {...bars} />
           </ExtraCard>
           <ExtraCard
             title="Maior sequência de pódios"
+            span={2}
+            delay={0.1}
             note={`Etapas seguidas terminando entre os ${data.podium_positions} primeiros`}
           >
             <TopBars
@@ -193,7 +217,12 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
             />
           </ExtraCard>
           {extras.evolution && (
-            <ExtraCard title="Evolução na tabela" note="Maiores movimentos de uma etapa para a seguinte">
+            <ExtraCard
+              title="Evolução na tabela"
+              span={3}
+              delay={0}
+              note="Maiores movimentos de uma etapa para a seguinte"
+            >
               <MoveList
                 rises={extras.evolution.rises}
                 falls={extras.evolution.falls}
@@ -270,6 +299,7 @@ function RangeSelect({
 function IndicatorCard({
   label,
   leader,
+  photo,
   value,
   unit,
   decimals,
@@ -279,6 +309,7 @@ function IndicatorCard({
 }: {
   label: string;
   leader: string;
+  photo?: string | null;
   value: number;
   unit: string;
   decimals?: boolean;
@@ -287,9 +318,19 @@ function IndicatorCard({
   children: React.ReactNode;
 }) {
   return (
-    <article className="flex flex-col bg-surface p-5">
-      <h2 className="eyebrow">{label}</h2>
-      <div className="mt-3 flex items-baseline gap-2">
+    <article className="relative flex flex-col overflow-hidden bg-surface p-5">
+      {/* Foto do líder do indicador, esmaecida e dissolvida na borda. */}
+      {photo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photo}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -right-3 -top-2 h-44 w-32 object-cover object-top opacity-30 [mask-image:linear-gradient(200deg,#000,transparent_72%)]"
+        />
+      )}
+      <h2 className="eyebrow relative">{label}</h2>
+      <div className="relative mt-3 flex items-baseline gap-2">
         <CountUp
           value={value}
           format={(n) => (decimals ? formatDecimal(n, 0) : String(Math.round(n)))}
@@ -297,20 +338,37 @@ function IndicatorCard({
         />
         <span className="eyebrow">{unit}</span>
       </div>
-      <p className="display mt-1 truncate text-xl font-bold">{leader}</p>
-      {note && <p className="mt-1 text-xs text-muted">{note}</p>}
-      <div className="mt-5 border-t border-line pt-4">{children}</div>
+      <p className="display relative mt-1 truncate text-xl font-bold">{leader}</p>
+      {note && <p className="relative mt-1 text-xs text-muted">{note}</p>}
+      <div className="relative mt-5 border-t border-line pt-4">{children}</div>
     </article>
   );
 }
 
-function ExtraCard({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+function ExtraCard({
+  title,
+  note,
+  span = 2,
+  delay = 0,
+  children,
+}: {
+  title: string;
+  note?: string;
+  /** Colunas ocupadas na grade de 6 do desktop: dá ritmo em vez de cartões todos iguais. */
+  span?: 2 | 3;
+  delay?: number;
+  children: React.ReactNode;
+}) {
   return (
-    <article className="bg-surface p-5">
+    <Reveal
+      as="section"
+      delay={delay}
+      className={clsx("bg-surface p-5", span === 3 ? "lg:col-span-3" : "lg:col-span-2")}
+    >
       <h3 className="display text-xl font-bold">{title}</h3>
       {note && <p className="text-xs text-muted">{note}</p>}
       <div className="mt-4">{children}</div>
-    </article>
+    </Reveal>
   );
 }
 

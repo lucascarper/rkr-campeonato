@@ -41,7 +41,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[240px_1fr]">
-      <aside className="border-b border-line bg-surface md:min-h-dvh md:border-b-0 md:border-r">
+      <aside className="border-b border-line bg-surface md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:border-b-0 md:border-r">
         <div className="flex items-center justify-between gap-3 p-4 md:block">
           <Link href="/" className="flex items-center gap-2">
             <RMark className="h-7 w-auto" />
@@ -65,7 +65,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="hidden p-4 md:block">
+        <div className="mt-auto hidden flex-col gap-2 p-4 md:flex">
+          <Link href="/" className="eyebrow transition-colors hover:!text-text">
+            Ver o site →
+          </Link>
           <Button variant="ghost" onClick={logout} className="w-full">
             Sair
           </Button>

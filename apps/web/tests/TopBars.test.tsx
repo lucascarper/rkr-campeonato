@@ -11,9 +11,19 @@ const drivers = {
     nickname: "",
     number: null,
     photo: null,
+    photo_lg: null,
     hidden: false,
   },
-  "2": { id: 2, slug: "jean", name: "Jean Mazepas", nickname: "", number: null, photo: null, hidden: false },
+  "2": {
+    id: 2,
+    slug: "jean",
+    name: "Jean Mazepas",
+    nickname: "",
+    number: null,
+    photo: null,
+    photo_lg: null,
+    hidden: false,
+  },
 };
 
 describe("TopBars", () => {

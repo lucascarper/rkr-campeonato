@@ -116,7 +116,7 @@ export function TimingTower({
               onFocus={() => onHoverDriver(d.slug)}
               className="group flex w-full items-center gap-3 py-1 text-left font-sans disabled:cursor-default"
             >
-              <DriverAvatar name={d.name} photo={d.photo} size={34} />
+              <DriverAvatar name={d.name} photo={d.photo} size={34} eager={row.index < 8} />
               <span className="min-w-0">
                 <span className="block truncate font-semibold leading-tight transition-colors group-hover:text-red group-disabled:group-hover:text-text sm:text-[1.05rem]">
                   {d.name}

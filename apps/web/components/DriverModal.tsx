@@ -158,7 +158,7 @@ function ProfileBody({
   return (
     <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto md:grid md:grid-cols-[minmax(260px,340px)_1fr] md:overflow-hidden">
       {/* Foto + identidade (fixa no desktop; só a coluna de dados rola) */}
-      <div className="relative h-56 shrink-0 overflow-hidden md:h-full">
+      <div className="relative h-72 shrink-0 overflow-hidden sm:h-80 md:h-full">
         {driver.photo && failedPhoto !== driver.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -187,7 +187,7 @@ function ProfileBody({
           <span className="eyebrow !text-red">
             {profile.category} · {profile.season}
           </span>
-          <Dialog.Title className="display mt-1 text-4xl font-extrabold md:text-5xl">
+          <Dialog.Title className="display mt-1 text-[2.6rem] font-extrabold leading-[0.95] md:text-5xl">
             {driver.name}
           </Dialog.Title>
           {driver.nickname && <p className="mt-1 text-muted">“{driver.nickname}”</p>}
