@@ -86,8 +86,10 @@ export function TimingTower({
               <span
                 aria-hidden
                 className={clsx(
-                  "h-9 w-[3px]",
-                  r.position === 1 ? "bg-red shadow-[0_0_10px_var(--red-glow)]" : "bg-transparent",
+                  "h-9 w-[3px] origin-center transition-all duration-300",
+                  r.position === 1
+                    ? "bg-red shadow-[0_0_10px_var(--red-glow)]"
+                    : "scale-y-0 bg-red/60 group-hover/row:scale-y-100",
                 )}
               />
               <span className="flex flex-col items-center leading-none">
@@ -247,12 +249,20 @@ export function TimingTower({
                   <motion.tr
                     key={row.id}
                     layout={reduced ? false : "position"}
-                    initial={reduced ? false : { opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    // As primeiras linhas já nascem visíveis e só deslizam (não atrasam a primeira
+                    // pintura); as de baixo entram quando chegam à tela.
+                    initial={reduced ? false : index < 8 ? { x: -16 } : { opacity: 0, x: -16 }}
+                    {...(index < 8
+                      ? { animate: { x: 0, opacity: 1 } }
+                      : { whileInView: { x: 0, opacity: 1 }, viewport: { once: true, amount: 0.6 } })}
                     exit={reduced ? undefined : { opacity: 0 }}
+                    whileHover={reduced ? undefined : { x: 3 }}
+                    whileTap={reduced ? undefined : { scale: 0.995 }}
                     transition={{
-                      duration: 0.35,
-                      delay: reduced ? 0 : Math.min(index, 20) * 0.018,
+                      // Reordenação (ao trocar a etapa) com mola; entrada com curva suave.
+                      layout: { type: "spring", stiffness: 260, damping: 30 },
+                      duration: 0.4,
+                      delay: reduced ? 0 : Math.min(index, 10) * 0.035,
                       ease: [0.2, 0.7, 0.2, 1],
                     }}
                     className={clsx(
