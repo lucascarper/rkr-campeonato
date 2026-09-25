@@ -143,6 +143,7 @@ export function StandingsView({ initial }: { initial: Standings }) {
             rows={data.rows}
             events={data.events}
             search={search}
+            pulseKey={data.upto ?? 0}
             selectedSlug={openSlug}
             onOpenDriver={openDriver}
             onHoverDriver={hoverDriver}

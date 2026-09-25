@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-table";
 import clsx from "clsx";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatDate, formatPoints } from "@/lib/format";
 import { useReducedMotion } from "@/lib/motion";
@@ -19,12 +19,38 @@ import type { EventInfo, StandingRow } from "@/lib/types";
 
 import { DriverAvatar } from "./DriverAvatar";
 
-function Delta({ value }: { value: number | null }) {
+/**
+ * Variação de posição em relação à etapa anterior. Ao trocar a etapa, a seta dá um brilho
+ * (verde para quem subiu, vermelho para quem caiu) e volta ao normal.
+ */
+/**
+ * Variação de posição em relação à etapa anterior. Ao trocar a etapa, o elemento é recriado e a
+ * animação `delta-pulse` dá um brilho na seta: verde para quem subiu, vermelho para quem caiu.
+ */
+/**
+ * Variação de posição em relação à etapa anterior. Ao trocar a etapa o elemento é recriado e
+ * dá um brilho: verde para quem subiu, vermelho para quem caiu.
+ */
+function Delta({ value, delay, reduced }: { value: number | null; delay: number; reduced: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const animate = value !== null && value !== 0 && !reduced;
+  useEffect(() => {
+    if (!animate) return;
+    const animation = ref.current?.animate(
+      [
+        { transform: "scale(1.5)", textShadow: "0 0 12px currentColor" },
+        { transform: "none", textShadow: "0 0 0 transparent" },
+      ],
+      { duration: 900, delay: delay * 1000, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" },
+    );
+    return () => animation?.cancel();
+  }, [animate, delay]);
+
   if (value === null) return <span className="text-faint">·</span>;
   if (value === 0) return <span className="text-faint">–</span>;
   const up = value > 0;
   return (
-    <span className={clsx("inline-flex items-center gap-0.5", up ? "text-up" : "text-red")}>
+    <span ref={ref} className={clsx("inline-flex items-center gap-0.5", up ? "text-up" : "text-red")}>
       <svg viewBox="0 0 8 8" className={clsx("h-2 w-2", !up && "rotate-180")} aria-hidden>
         <path d="M4 1 7.5 7H.5Z" fill="currentColor" />
       </svg>
@@ -39,12 +65,15 @@ export function TimingTower({
   events,
   search,
   selectedSlug,
+  pulseKey,
   onOpenDriver,
   onHoverDriver,
 }: {
   rows: StandingRow[];
   events: EventInfo[];
   search: string;
+  /** Muda quando a etapa selecionada muda: dispara o brilho nas setas de variação. */
+  pulseKey: string | number;
   selectedSlug: string | null;
   onOpenDriver: (slug: string) => void;
   onHoverDriver: (slug: string) => void;
@@ -95,7 +124,13 @@ export function TimingTower({
               <span className="flex flex-col items-center leading-none">
                 <span className="display text-2xl font-extrabold">{r.position}</span>
                 <span className="num mt-0.5 text-[10px]">
-                  <Delta value={r.delta} />
+                  {/* A chave muda junto com a etapa escolhida: isso redispara o brilho. */}
+                  <Delta
+                    key={`${pulseKey}-${r.driver.id}`}
+                    value={r.delta}
+                    delay={reduced ? 0 : Math.min(row.index, 10) * 0.035}
+                    reduced={reduced}
+                  />
                 </span>
               </span>
             </span>
@@ -175,7 +210,7 @@ export function TimingTower({
       },
       ...eventColumns,
     ];
-  }, [events, onOpenDriver, onHoverDriver]);
+  }, [events, onOpenDriver, onHoverDriver, pulseKey, reduced]);
 
   // eslint-disable-next-line react-hooks/incompatible-library -- componente não usa React Compiler
   const table = useReactTable({
