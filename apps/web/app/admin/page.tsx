@@ -45,6 +45,18 @@ type Report = {
   errors: number;
   warnings: number;
   official_check: { checked: number; mismatches: number };
+  movements?: {
+    compared: boolean;
+    rows: {
+      category: string;
+      driver: string;
+      before_position: number | null;
+      after_position: number;
+      before_points: number | null;
+      after_points: number;
+      change: number | null;
+    }[];
+  };
   summary: { new: number; replace: number; unchanged: number };
 };
 type Batch = {
@@ -203,6 +215,8 @@ export default function ImportPage() {
             <Counter label="Erros" value={report.errors} tone={report.errors ? "error" : undefined} />
             <Counter label="Avisos" value={report.warnings} />
           </div>
+
+          {report.movements && <Movements movements={report.movements} />}
 
           {report.official_check.checked > 0 && (
             <Notice tone={report.official_check.mismatches ? "error" : "ok"}>
@@ -458,6 +472,75 @@ function DriverDecisions({
           <span className="text-text">{created.map((d) => d.name).join(", ")}</span>.
         </p>
       )}
+    </div>
+  );
+}
+
+function Movements({ movements }: { movements: NonNullable<Report["movements"]> }) {
+  const [all, setAll] = useState(false);
+  if (!movements.compared && !movements.rows.length) {
+    return <Notice>Primeira importação desta categoria: ainda não há classificação para comparar.</Notice>;
+  }
+  const moved = movements.rows.filter((r) => r.change !== 0);
+  const shown = all ? movements.rows : moved;
+  if (!movements.rows.length) {
+    return <Notice tone="ok">A classificação não muda com este arquivo.</Notice>;
+  }
+  return (
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="display text-2xl font-bold">Como a classificação vai ficar</h2>
+          <p className="text-sm text-muted">
+            {moved.length} piloto(s) mudam de posição; {movements.rows.length - moved.length} só mudam de
+            pontos.
+          </p>
+        </div>
+        {movements.rows.length > moved.length && (
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
+            Mostrar também quem só muda de pontos
+          </label>
+        )}
+      </div>
+      <div className="scrollbar-thin mt-3 max-h-80 overflow-auto border border-line">
+        <table className="w-full text-sm">
+          <thead className="eyebrow sticky top-0 bg-surface text-left">
+            <tr>
+              <th className="p-2 font-normal">Cat.</th>
+              <th className="p-2 font-normal">Piloto</th>
+              <th className="p-2 text-right font-normal">Antes</th>
+              <th className="p-2 text-right font-normal">Depois</th>
+              <th className="p-2 text-right font-normal">Variação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((r) => (
+              <tr key={`${r.category}-${r.driver}`} className="border-t border-line">
+                <td className="num p-2 text-xs text-muted">{r.category}</td>
+                <td className="p-2">{r.driver}</td>
+                <td className="num p-2 text-right text-muted">
+                  {r.before_position ? `${r.before_position}º · ${r.before_points} pts` : "—"}
+                </td>
+                <td className="num p-2 text-right">
+                  {r.after_position}º · {r.after_points} pts
+                </td>
+                <td className="num p-2 text-right">
+                  {r.change === null ? (
+                    <span className="text-xs uppercase text-red">novo</span>
+                  ) : r.change > 0 ? (
+                    <span className="text-up">▲ {r.change}</span>
+                  ) : r.change < 0 ? (
+                    <span className="text-red">▼ {Math.abs(r.change)}</span>
+                  ) : (
+                    <span className="text-faint">–</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

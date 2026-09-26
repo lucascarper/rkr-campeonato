@@ -13,6 +13,7 @@ export function SiteHeader() {
   const pathname = usePathname() ?? "/";
   if (pathname.startsWith("/admin")) return null;
   const isDashboard = pathname.startsWith("/dashboard");
+  const isCalendar = pathname.startsWith("/calendario");
   const segment = pathname.split("/").filter(Boolean).pop()?.toUpperCase();
   const current = CATEGORIES.find((c) => c === segment) ?? "RK1";
   const base = isDashboard ? "/dashboard/" : "/";
@@ -49,8 +50,13 @@ export function SiteHeader() {
       <nav aria-label="Seções" className="border-t border-line">
         <div className="mx-auto flex max-w-7xl gap-6 px-4">
           {[
-            { href: `/${current.toLowerCase()}`, label: "Classificação", active: !isDashboard },
+            {
+              href: `/${current.toLowerCase()}`,
+              label: "Classificação",
+              active: !isDashboard && !isCalendar,
+            },
             { href: `/dashboard/${current.toLowerCase()}`, label: "Dashboard", active: isDashboard },
+            { href: "/calendario", label: "Calendário", active: isCalendar },
           ].map((item) => (
             <Link
               key={item.label}

@@ -32,6 +32,8 @@ export const metadata: Metadata = {
   title: { default: "RKR Kart Racing — Campeonato", template: "%s · RKR Kart Racing" },
   description: "Classificação, estatísticas e trajetória dos pilotos do campeonato de Kart Rental RKR.",
   openGraph: { siteName: "RKR Kart Racing", locale: "pt_BR", type: "website" },
+  applicationName: "RKR Kart Racing",
+  appleWebApp: { capable: true, title: "RKR", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = { themeColor: "#0A0A0B", colorScheme: "dark" };

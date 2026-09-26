@@ -10,6 +10,7 @@ import { useDriverParam } from "@/lib/useDriverParam";
 
 import { CountUp } from "./CountUp";
 import { Reveal } from "./Reveal";
+import { StageHighlights } from "./StageHighlights";
 import { DriverModal } from "./DriverModal";
 import { CHART_THEME, EChart } from "./EChart";
 import { TopBars } from "./TopBars";
@@ -89,6 +90,10 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
       </div>
 
       <div className={clsx("mt-8 transition-opacity", loading && "opacity-60")} aria-busy={loading}>
+        {data.highlights && (
+          <StageHighlights highlights={data.highlights} drivers={data.drivers} onOpen={open} />
+        )}
+
         {/* Indicadores obrigatórios */}
         <section
           aria-label="Indicadores principais"
@@ -260,6 +265,7 @@ export function DashboardView({ initial }: { initial: Dashboard }) {
         upto={null}
         previous={neighbor(index - 1)}
         next={neighbor(index + 1)}
+        drivers={order.map((d) => ({ slug: d.slug, name: d.name }))}
         onClose={close}
         onNavigate={navigate}
       />

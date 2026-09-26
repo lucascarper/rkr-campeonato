@@ -8,6 +8,7 @@ from collections import defaultdict
 
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.db.models import Max
 from django.utils import timezone
 
 from championship import services
@@ -22,9 +23,10 @@ from championship.models import (
     ScoringTable,
     Season,
     SeasonConfig,
+    Standing,
     normalize_name,
 )
-from rules import race_points
+from rules import ScoredResult, compute_standings, race_points
 from rules.types import FIN
 
 from .parsers import ImportFormatError, ParsedImport, parse_file, validate
@@ -125,6 +127,12 @@ def build_report(payload: dict, issues: list[dict]) -> dict:
         ev["done"] = ev["done"] or bool(race["rows"])
         ev["races"] += 1 if race["rows"] else 0
 
+    try:
+        movements = _projected_movements(payload, tables, {r["key"]: r["state"] for r in replacements})
+    except Exception:  # a prévia de posições é informativa: nunca pode travar a importação
+        logger.exception("Falha ao projetar a classificação da importação")
+        movements = {"compared": False, "rows": []}
+
     check = _official_check(payload, tables)
     for item in check:
         if not item["ok"]:
@@ -150,6 +158,7 @@ def build_report(payload: dict, issues: list[dict]) -> dict:
         "issues": issues,
         "errors": len(errors),
         "warnings": len(issues) - len(errors),
+        "movements": movements,
         "official_check": {
             "checked": len(check),
             "mismatches": sum(1 for c in check if not c["ok"]),
@@ -302,6 +311,138 @@ def _race_state(race: dict) -> tuple[str, int]:
     ]
     same = _race_signature(current) == _race_signature(race["rows"])
     return ("unchanged" if same else "replace"), len(rows)
+
+
+def _projected_movements(payload: dict, tables: dict[str, str], states: dict[str, str]) -> dict:
+    """Classificação como ficaria depois de gravar, comparada à atual (quem sobe, cai ou entra).
+
+    Junta os resultados já gravados (exceto as corridas que o arquivo substitui) com as linhas do
+    arquivo, pontua pelas regras da temporada e calcula a classificação final de cada categoria.
+    """
+    incoming = [
+        r
+        for r in payload["races"]
+        if r["rows"] and r["key"] in tables and states.get(r["key"]) != "unchanged"
+    ]
+    if not incoming:
+        return {"compared": True, "rows": []}
+    assignments = {normalize_name(k): v for k, v in payload.get("category_assignments", {}).items()}
+    norm_to_id = dict(Driver.objects.filter(merged_into=None).values_list("normalized_name", "id"))
+    names = dict(Driver.objects.values_list("id", "name"))
+    category_codes = dict(Category.objects.values_list("id", "code"))
+    rows: list[dict] = []
+    compared = True
+
+    for year in sorted({r["season"] for r in incoming}):
+        season = Season.objects.filter(year=year).first()
+        if not season:
+            compared = False
+            continue
+        config = services.season_config(season)
+        scoring = services.scoring_config(config)
+        table_map = {t.name: t.as_dict() for t in season.scoring_tables.prefetch_related("rules")}
+        effective = services.effective_categories(season)
+        replaced = {r["key"] for r in incoming if r["season"] == year}
+
+        def category_for(driver, name, race_category, effective=effective):
+            if race_category:
+                return race_category
+            return assignments.get(normalize_name(name)) or category_codes.get(effective.get(driver))
+
+        per_category: dict[str, list[ScoredResult]] = defaultdict(list)
+        existing = RaceResult.objects.filter(active=True, race__event__season=season).select_related(
+            "race__event", "race__category", "driver"
+        )
+        for result in existing:
+            race = result.race
+            key = f"{year}|{race.event.number}|{race.label}|{race.category.code if race.category else ''}"
+            if key in replaced:
+                continue
+            code = category_for(
+                result.driver_id, result.driver.name, race.category.code if race.category else None
+            )
+            if code:
+                per_category[code].append(
+                    ScoredResult(
+                        result_id=f"db{result.id}",
+                        driver_id=result.driver_id,
+                        event_number=race.event.number,
+                        sequence=race.event.number * 100 + race.order,
+                        race_label=race.label,
+                        position=result.position,
+                        status=result.status,
+                        points=float(result.points),
+                        pole=result.pole,
+                        fastest_lap=result.fastest_lap,
+                    )
+                )
+        for race in (r for r in incoming if r["season"] == year):
+            table = table_map.get(tables[race["key"]], {})
+            for index, row in enumerate(race["rows"]):
+                key = normalize_name(row["driver"])
+                driver = norm_to_id.get(key, f"novo:{row['driver']}")
+                code = category_for(driver, row["driver"], race["category"])
+                if not code:
+                    continue
+                per_category[code].append(
+                    ScoredResult(
+                        result_id=f"{race['key']}#{index}",
+                        driver_id=driver,
+                        event_number=race["event_number"],
+                        sequence=race["event_number"] * 100 + race["order"],
+                        race_label=race["label"],
+                        position=row["position"],
+                        status=row["status"],
+                        points=race_points(
+                            position=row["position"],
+                            status=row["status"],
+                            table=table,
+                            config=scoring,
+                            pole=row["pole"],
+                            fastest_lap=row["fastest_lap"],
+                            shirt_penalty=row["shirt_penalty"],
+                        ),
+                        pole=row["pole"],
+                        fastest_lap=row["fastest_lap"],
+                    )
+                )
+
+        for code, results in sorted(per_category.items()):
+            category = Category.objects.get(code=code)
+            latest = Standing.objects.filter(season=season, category=category).aggregate(m=Max("upto_event"))[
+                "m"
+            ]
+            if latest is None:
+                compared = False  # primeira importação da categoria: não há com o que comparar
+                continue
+            before = {
+                s.driver_id: (s.position, float(s.points))
+                for s in Standing.objects.filter(season=season, category=category, upto_event=latest)
+            }
+            for row in compute_standings(
+                results, tiebreak=config.tiebreak_order, podium=config.podium_positions
+            ):
+                prev = before.get(row.driver_id)
+                if prev and prev[0] == row.position and abs(prev[1] - row.points) < 0.01:
+                    continue
+                name = (
+                    row.driver_id.split(":", 1)[1]
+                    if isinstance(row.driver_id, str)
+                    else names.get(row.driver_id)
+                )
+                rows.append(
+                    {
+                        "category": code,
+                        "driver": name,
+                        "before_position": prev[0] if prev else None,
+                        "after_position": row.position,
+                        "before_points": prev[1] if prev else None,
+                        "after_points": row.points,
+                        "change": (prev[0] - row.position) if prev else None,
+                    }
+                )
+    rows.sort(key=lambda r: (r["category"], r["after_position"]))
+    return {"compared": compared, "rows": rows}
 
 
 def _official_check(payload: dict, tables: dict[str, str]) -> list[dict]:

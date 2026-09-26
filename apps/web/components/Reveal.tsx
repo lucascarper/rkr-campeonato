@@ -14,10 +14,10 @@ export function Reveal({
   children: React.ReactNode;
   delay?: number;
   className?: string;
-  as?: "div" | "section";
+  as?: "div" | "section" | "li";
 }) {
   const reduced = useReducedMotion();
-  const Tag = as === "section" ? motion.section : motion.div;
+  const Tag = as === "section" ? motion.section : as === "li" ? motion.li : motion.div;
   return (
     <Tag
       className={className}

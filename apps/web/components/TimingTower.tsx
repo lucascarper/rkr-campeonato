@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type CellContext,
   type ColumnDef,
   type SortingState,
   flexRender,
@@ -18,15 +19,8 @@ import { useReducedMotion } from "@/lib/motion";
 import type { EventInfo, StandingRow } from "@/lib/types";
 
 import { DriverAvatar } from "./DriverAvatar";
+import { Ticker } from "./Ticker";
 
-/**
- * Variação de posição em relação à etapa anterior. Ao trocar a etapa, a seta dá um brilho
- * (verde para quem subiu, vermelho para quem caiu) e volta ao normal.
- */
-/**
- * Variação de posição em relação à etapa anterior. Ao trocar a etapa, o elemento é recriado e a
- * animação `delta-pulse` dá um brilho na seta: verde para quem subiu, vermelho para quem caiu.
- */
 /**
  * Variação de posição em relação à etapa anterior. Ao trocar a etapa o elemento é recriado e
  * dá um brilho: verde para quem subiu, vermelho para quem caiu.
@@ -60,6 +54,111 @@ function Delta({ value, delay, reduced }: { value: number | null; delay: number;
   );
 }
 
+/**
+ * Dados que mudam a cada render (etapa escolhida, destaques, callbacks) vão por `meta` da tabela.
+ * As células abaixo são componentes definidos uma vez só: a tabela trata cada célula como um
+ * componente, e uma função nova a cada troca de etapa faria o React recriar tudo (o contador de
+ * pontos e o brilho das setas nasceriam já no estado final).
+ */
+type TowerMeta = {
+  pulseKey: string | number;
+  reduced: boolean;
+  bestByEvent: Record<number, number>;
+  onOpenDriver: (slug: string) => void;
+  onHoverDriver: (slug: string) => void;
+};
+type Cell = CellContext<StandingRow, unknown>;
+const metaOf = (ctx: Cell) => ctx.table.options.meta as TowerMeta;
+
+function PositionCell(ctx: Cell) {
+  const { pulseKey, reduced } = metaOf(ctx);
+  const r = ctx.row.original;
+  return (
+    <span className="flex items-center gap-2">
+      <span
+        aria-hidden
+        className={clsx(
+          "h-9 w-[3px] origin-center transition-all duration-300",
+          r.position === 1
+            ? "bg-red shadow-[0_0_10px_var(--red-glow)]"
+            : "scale-y-0 bg-red/60 group-hover/row:scale-y-100",
+        )}
+      />
+      <span className="flex flex-col items-center leading-none">
+        <span className="display text-2xl font-extrabold">{r.position}</span>
+        <span className="num mt-0.5 text-[10px]">
+          {/* A chave muda junto com a etapa escolhida: isso redispara o brilho. */}
+          <Delta
+            key={`${pulseKey}-${r.driver.id}`}
+            value={r.delta}
+            delay={reduced ? 0 : Math.min(ctx.row.index, 10) * 0.035}
+            reduced={reduced}
+          />
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function DriverCell(ctx: Cell) {
+  const { onOpenDriver, onHoverDriver } = metaOf(ctx);
+  const d = ctx.row.original.driver;
+  const races = ctx.row.original.races;
+  return (
+    <button
+      type="button"
+      disabled={d.hidden}
+      onClick={() => onOpenDriver(d.slug)}
+      onPointerEnter={() => onHoverDriver(d.slug)}
+      onFocus={() => onHoverDriver(d.slug)}
+      className="group flex w-full items-center gap-3 py-1 text-left font-sans disabled:cursor-default"
+    >
+      <DriverAvatar name={d.name} photo={d.photo} size={34} eager={ctx.row.index < 8} />
+      <span className="min-w-0">
+        <span className="block truncate font-semibold leading-tight transition-colors group-hover:text-red group-disabled:group-hover:text-text sm:text-[1.05rem]">
+          {d.name}
+        </span>
+        <span className="eyebrow block !text-[10px] !tracking-[0.1em]">
+          {races} {races === 1 ? "corrida" : "corridas"}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function PointsCell(ctx: Cell) {
+  return <Ticker value={ctx.getValue() as number} className="text-base font-bold sm:text-lg" />;
+}
+
+function GapCell(ctx: Cell) {
+  const r = ctx.row.original;
+  return r.position === 1 ? (
+    <span className="text-[10px] tracking-[0.14em] text-red">LÍDER</span>
+  ) : (
+    <span className="text-muted">−{formatPoints(r.gap_to_leader)}</span>
+  );
+}
+
+function CountCell(ctx: Cell) {
+  const value = ctx.getValue() as number;
+  return <span className={clsx(!value && "text-faint")}>{value}</span>;
+}
+
+function EventCell(ctx: Cell) {
+  const number = Number(ctx.column.id.slice(1)); // colunas "e1", "e2"…
+  const value = ctx.row.original.per_event[String(number)];
+  if (value === null || value === undefined) return <span className="text-faint">·</span>;
+  const best = value > 0 && value === metaOf(ctx).bestByEvent[number];
+  return (
+    <span
+      className={clsx(value === 0 && "text-faint", best && "font-bold text-red")}
+      title={best ? "Maior pontuação da etapa" : undefined}
+    >
+      {formatPoints(value)}
+    </span>
+  );
+}
+
 export function TimingTower({
   rows,
   events,
@@ -81,90 +180,21 @@ export function TimingTower({
   const reduced = useReducedMotion();
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const columns = useMemo<ColumnDef<StandingRow>[]>(() => {
-    const eventColumns: ColumnDef<StandingRow>[] = events.map((event) => ({
-      id: `e${event.number}`,
-      header: () => (
-        <span
-          className="flex flex-col items-end leading-none"
-          title={`${event.location} · ${formatDate(event.date)}`}
-        >
-          <span>{event.label}</span>
-          {event.preseason && <span className="mt-1 text-[9px] tracking-normal text-faint">PRÉ</span>}
-        </span>
-      ),
-      accessorFn: (row) => row.per_event[String(event.number)] ?? -1,
-      sortDescFirst: true,
-      cell: ({ row }) => {
-        const value = row.original.per_event[String(event.number)];
-        if (value === null || value === undefined) return <span className="text-faint">·</span>;
-        return <span className={clsx(value === 0 && "text-faint")}>{formatPoints(value)}</span>;
-      },
-      meta: { className: "w-12 text-right" },
-    }));
-    return [
+  const columns = useMemo<ColumnDef<StandingRow>[]>(
+    () => [
       {
         id: "position",
         header: "Pos",
         accessorKey: "position",
         meta: { className: "sticky left-0 z-10 w-14 min-w-14 max-w-14 pl-0", sticky: true },
-        cell: ({ row }) => {
-          const r = row.original;
-          return (
-            <span className="flex items-center gap-2">
-              <span
-                aria-hidden
-                className={clsx(
-                  "h-9 w-[3px] origin-center transition-all duration-300",
-                  r.position === 1
-                    ? "bg-red shadow-[0_0_10px_var(--red-glow)]"
-                    : "scale-y-0 bg-red/60 group-hover/row:scale-y-100",
-                )}
-              />
-              <span className="flex flex-col items-center leading-none">
-                <span className="display text-2xl font-extrabold">{r.position}</span>
-                <span className="num mt-0.5 text-[10px]">
-                  {/* A chave muda junto com a etapa escolhida: isso redispara o brilho. */}
-                  <Delta
-                    key={`${pulseKey}-${r.driver.id}`}
-                    value={r.delta}
-                    delay={reduced ? 0 : Math.min(row.index, 10) * 0.035}
-                    reduced={reduced}
-                  />
-                </span>
-              </span>
-            </span>
-          );
-        },
+        cell: PositionCell,
       },
       {
         id: "driver",
         header: "Piloto",
         accessorFn: (row) => row.driver.name,
         meta: { className: "sticky left-14 z-10 min-w-[11.5rem] sm:min-w-[16rem]", sticky: true },
-        cell: ({ row }) => {
-          const d = row.original.driver;
-          return (
-            <button
-              type="button"
-              disabled={d.hidden}
-              onClick={() => onOpenDriver(d.slug)}
-              onPointerEnter={() => onHoverDriver(d.slug)}
-              onFocus={() => onHoverDriver(d.slug)}
-              className="group flex w-full items-center gap-3 py-1 text-left font-sans disabled:cursor-default"
-            >
-              <DriverAvatar name={d.name} photo={d.photo} size={34} eager={row.index < 8} />
-              <span className="min-w-0">
-                <span className="block truncate font-semibold leading-tight transition-colors group-hover:text-red group-disabled:group-hover:text-text sm:text-[1.05rem]">
-                  {d.name}
-                </span>
-                <span className="eyebrow block !text-[10px] !tracking-[0.1em]">
-                  {row.original.races} {row.original.races === 1 ? "corrida" : "corridas"}
-                </span>
-              </span>
-            </button>
-          );
-        },
+        cell: DriverCell,
       },
       {
         id: "points",
@@ -172,21 +202,14 @@ export function TimingTower({
         accessorKey: "points",
         sortDescFirst: true,
         meta: { className: "w-16 text-right" },
-        cell: ({ getValue }) => (
-          <span className="text-base font-bold sm:text-lg">{formatPoints(getValue<number>())}</span>
-        ),
+        cell: PointsCell,
       },
       {
         id: "gap",
         header: "Dif",
         accessorKey: "gap_to_leader",
         meta: { className: "w-16 text-right" },
-        cell: ({ row }) =>
-          row.original.position === 1 ? (
-            <span className="text-[10px] tracking-[0.14em] text-red">LÍDER</span>
-          ) : (
-            <span className="text-muted">−{formatPoints(row.original.gap_to_leader)}</span>
-          ),
+        cell: GapCell,
       },
       {
         id: "wins",
@@ -194,9 +217,7 @@ export function TimingTower({
         accessorKey: "wins",
         sortDescFirst: true,
         meta: { className: "w-11 text-right" },
-        cell: ({ getValue }) => (
-          <span className={clsx(!getValue<number>() && "text-faint")}>{getValue<number>()}</span>
-        ),
+        cell: CountCell,
       },
       {
         id: "podiums",
@@ -204,13 +225,36 @@ export function TimingTower({
         accessorKey: "podiums",
         sortDescFirst: true,
         meta: { className: "w-11 text-right pr-4" },
-        cell: ({ getValue }) => (
-          <span className={clsx(!getValue<number>() && "text-faint")}>{getValue<number>()}</span>
-        ),
+        cell: CountCell,
       },
-      ...eventColumns,
-    ];
-  }, [events, onOpenDriver, onHoverDriver, pulseKey, reduced]);
+      ...events.map<ColumnDef<StandingRow>>((event) => ({
+        id: `e${event.number}`,
+        header: () => (
+          <span
+            className="flex flex-col items-end leading-none"
+            title={`${event.location} · ${formatDate(event.date)}`}
+          >
+            <span>{event.label}</span>
+            {event.preseason && <span className="mt-1 text-[9px] tracking-normal text-faint">PRÉ</span>}
+          </span>
+        ),
+        accessorFn: (row) => row.per_event[String(event.number)] ?? -1,
+        sortDescFirst: true,
+        cell: EventCell,
+        meta: { className: "w-12 text-right" },
+      })),
+    ],
+    [events],
+  );
+
+  // Maior pontuação de cada etapa na tabela (apresentação: só destaca o maior número da coluna).
+  const bestByEvent = useMemo(() => {
+    const best: Record<number, number> = {};
+    for (const event of events) {
+      best[event.number] = Math.max(0, ...rows.map((r) => r.per_event[String(event.number)] ?? 0));
+    }
+    return best;
+  }, [events, rows]);
 
   // eslint-disable-next-line react-hooks/incompatible-library -- componente não usa React Compiler
   const table = useReactTable({
@@ -234,6 +278,7 @@ export function TimingTower({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getRowId: (row) => String(row.driver.id),
+    meta: { pulseKey, reduced, bestByEvent, onOpenDriver, onHoverDriver } satisfies TowerMeta,
   });
 
   const visible = table.getRowModel().rows;

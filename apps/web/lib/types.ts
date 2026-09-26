@@ -126,7 +126,22 @@ export interface RankEntry {
   [key: string]: unknown;
 }
 
+export interface HighlightEntry {
+  driver_id: number;
+  race: string;
+  points: number;
+}
+
+export interface Highlights {
+  event: Partial<EventInfo> & { number: number };
+  winners: HighlightEntry[];
+  poles: HighlightEntry[];
+  fastest_laps: HighlightEntry[];
+  biggest_rise: { driver_id: number; from: number; to: number; value: number } | null;
+}
+
 export interface Dashboard {
+  highlights: Highlights | null;
   season: number;
   category: { code: CategoryCode; name: string };
   range: { from: number | null; to: number | null };
@@ -155,4 +170,13 @@ export interface Dashboard {
     gap_to_leader?: { series: { driver_id: number; values: (number | null)[] }[] };
     heatmap: { events: number[]; rows: { driver_id: number; positions: (number | null)[] }[] };
   };
+}
+
+export interface CalendarEvent extends EventInfo {
+  races: { label: string; category: CategoryCode | null; winner: DriverRef | null }[];
+}
+
+export interface Calendar {
+  season: number;
+  events: CalendarEvent[];
 }

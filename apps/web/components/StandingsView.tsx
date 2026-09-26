@@ -9,6 +9,7 @@ import { useDriverParam } from "@/lib/useDriverParam";
 
 import { DriverModal } from "./DriverModal";
 import { PodiumStrip } from "./PodiumStrip";
+import { StageBar } from "./StageBar";
 import { TimingTower } from "./TimingTower";
 
 export function StandingsView({ initial }: { initial: Standings }) {
@@ -81,50 +82,31 @@ export function StandingsView({ initial }: { initial: Standings }) {
           )}
         </div>
 
-        {/* No celular os dois filtros dividem uma linha só, para a tabela começar mais cedo. */}
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end sm:gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className="eyebrow hidden sm:block">Classificação até a etapa</span>
-            <span className="cut-sm relative flex items-center border border-line-strong bg-surface">
-              <select
-                value={data.upto ?? ""}
-                onChange={(e) => changeUpto(Number(e.target.value))}
-                disabled={!data.cuts.length}
-                aria-label="Classificação até a etapa"
-                className="num w-full appearance-none bg-transparent py-2 pl-2.5 pr-7 text-xs outline-none sm:w-56 sm:py-2.5 sm:pl-3 sm:pr-9 sm:text-sm"
-              >
-                {data.events.length === 0 && <option value="">—</option>}
-                {[...data.cuts].reverse().map((n) => {
-                  const ev = data.calendar.find((e) => e.number === n);
-                  return (
-                    <option key={n} value={n} className="bg-surface">
-                      Etapa {n}
-                      {ev ? ` · ${ev.location}` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-              <svg
-                viewBox="0 0 10 10"
-                className="pointer-events-none absolute right-2.5 h-2.5 w-2.5 text-red sm:right-3"
-                aria-hidden
-              >
-                <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              </svg>
-            </span>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="eyebrow hidden sm:block">Buscar piloto</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar piloto"
-              aria-label="Buscar piloto"
-              className="cut-sm border border-line-strong bg-surface px-2.5 py-2 text-xs outline-none placeholder:text-faint focus:border-red sm:w-56 sm:px-3 sm:py-2.5 sm:text-sm"
-            />
-          </label>
-        </div>
+        <label className="hidden flex-col gap-1.5 sm:flex">
+          <span className="eyebrow">Buscar piloto</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Nome do piloto"
+            aria-label="Buscar piloto"
+            className="cut-sm w-56 border border-line-strong bg-surface px-3 py-2.5 text-sm outline-none placeholder:text-faint focus:border-red"
+          />
+        </label>
+      </div>
+
+      {/* Etapas: um toque mostra a classificação como estava após aquela etapa. */}
+      <div className="mt-4 flex flex-col gap-2 sm:mt-6">
+        <span className="eyebrow hidden sm:block">Classificação até a etapa</span>
+        <StageBar cuts={data.cuts} calendar={data.calendar} selected={data.upto} onSelect={changeUpto} />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar piloto"
+          aria-label="Buscar piloto"
+          className="cut-sm border border-line-strong bg-surface px-2.5 py-2 text-xs outline-none placeholder:text-faint focus:border-red sm:hidden"
+        />
       </div>
 
       {/* Pódio da categoria: a foto dos 3 primeiros, a peça visual da tela. */}
@@ -169,6 +151,7 @@ export function StandingsView({ initial }: { initial: Standings }) {
         upto={data.upto}
         previous={neighbor(index - 1)}
         next={neighbor(index + 1)}
+        drivers={order.map((d) => ({ slug: d.slug, name: d.name }))}
         onClose={closeDriver}
         onNavigate={navigateDriver}
       />

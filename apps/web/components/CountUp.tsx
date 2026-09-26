@@ -45,7 +45,12 @@ export function CountUp({
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    // Garantia: com a aba em segundo plano o navegador pausa os quadros; o valor final entra mesmo assim.
+    const done = window.setTimeout(() => setShown(value), duration + 80);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(done);
+    };
   }, [value, duration, reduced, started]);
 
   return (

@@ -15,7 +15,7 @@ from rules.discard import find_absences
 from rules.stats import build_dashboard, driver_stats
 
 from . import services
-from .models import Category, Driver, Event, Race, Standing
+from .models import Category, Driver, Event, Race, RaceResult, Standing
 
 
 def _season(request):
@@ -77,10 +77,21 @@ def categories(request):
 @api_view(["GET"])
 def events(request):
     season = _season(request)
+    winners = {
+        result.race_id: result.driver
+        for result in RaceResult.objects.filter(race__event__season=season, active=True, position=1)
+        .exclude(status__in=["DSQ", "DNS"])
+        .select_related("driver")
+    }
     races = {}
     for event in season.events.prefetch_related("races__category"):
         races[event.number] = [
-            {"label": r.label, "category": r.category.code if r.category else None} for r in event.races.all()
+            {
+                "label": r.label,
+                "category": r.category.code if r.category else None,
+                "winner": services.driver_payload(winners[r.id]) if r.id in winners else None,
+            }
+            for r in event.races.all()
         ]
     return Response(
         {
@@ -178,6 +189,9 @@ def _dashboard(season, category, start, end):
     board.pop("driver_stats")
     ids = {r.driver_id for r in results}
     event_map = {e.number: e for e in season.events.all()}
+    highlights = _highlights(results, cuts, events, event_map)
+    if highlights and highlights["biggest_rise"]:
+        ids.add(highlights["biggest_rise"]["driver_id"])
     return {
         "season": season.year,
         "category": {"code": category.code, "name": category.name},
@@ -185,8 +199,37 @@ def _dashboard(season, category, start, end):
         "all_events": [_event_payload(event_map[n]) for n in data.event_numbers if n in event_map],
         "availability": data.availability,
         "podium_positions": config.podium_positions,
+        "highlights": highlights,
         "drivers": {d.id: services.driver_payload(d) for d in services.drivers_by_id(ids).values()},
         **board,
+    }
+
+
+def _highlights(results, cuts, events, event_map):
+    """Destaques da última etapa do intervalo: vencedor, pole, volta mais rápida e maior subida."""
+    if not events:
+        return None
+    last = events[-1]
+    in_event = [r for r in results if r.event_number == last]
+
+    def pick(rows):
+        return [{"driver_id": r.driver_id, "race": r.race_label, "points": r.points} for r in rows]
+
+    rises = [row for row in cuts.get(last, []) if row.delta and row.delta > 0]
+    rise = max(rises, key=lambda row: (row.delta, -row.position), default=None)
+    return {
+        "event": _event_payload(event_map[last]) if last in event_map else {"number": last},
+        "winners": pick(r for r in in_event if r.position == 1 and r.status != "DSQ"),
+        "poles": pick(r for r in in_event if r.pole),
+        "fastest_laps": pick(r for r in in_event if r.fastest_lap),
+        "biggest_rise": {
+            "driver_id": rise.driver_id,
+            "from": rise.previous_position,
+            "to": rise.position,
+            "value": rise.delta,
+        }
+        if rise
+        else None,
     }
 
 

@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DriverAvatar } from "@/components/DriverAvatar";
+import { BatchPhotos } from "@/components/admin/BatchPhotos";
 import { Button, Field, Notice, PageTitle, inputClass } from "@/components/admin/ui";
 import { CATEGORIES } from "@/lib/categories";
 import { adminFetch } from "@/lib/client";
@@ -25,6 +26,9 @@ type AdminDriver = {
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<AdminDriver[]>([]);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string>("all");
+  const [onlyNoPhoto, setOnlyNoPhoto] = useState(false);
+  const [batch, setBatch] = useState(false);
   const [editing, setEditing] = useState<AdminDriver | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
@@ -40,14 +44,22 @@ export default function DriversPage() {
       .normalize("NFD")
       .replace(/\p{Diacritic}/gu, "")
       .toLowerCase();
-    return drivers.filter((d) =>
-      d.name
-        .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .toLowerCase()
-        .includes(q),
+    return drivers.filter(
+      (d) =>
+        d.name
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .toLowerCase()
+          .includes(q) &&
+        (category === "all" || (category === "none" ? !d.category : d.category === category)) &&
+        (!onlyNoPhoto || !d.photo_url),
     );
-  }, [drivers, query]);
+  }, [drivers, query, category, onlyNoPhoto]);
+  const noPhoto = drivers.filter((d) => !d.photo_url).length;
+  const countFor = (key: string) =>
+    key === "all"
+      ? drivers.length
+      : drivers.filter((d) => (key === "none" ? !d.category : d.category === key)).length;
 
   const create = async () => {
     const name = window.prompt("Nome completo do piloto");
@@ -75,9 +87,41 @@ export default function DriversPage() {
             onChange={(e) => setQuery(e.target.value)}
             className={inputClass}
           />
+          <Button variant="ghost" onClick={() => setBatch((b) => !b)}>
+            {batch ? "Fechar lote" : "Fotos em lote"}
+          </Button>
           <Button onClick={create}>Cadastrar piloto</Button>
         </div>
       </PageTitle>
+      {batch && <BatchPhotos drivers={drivers} onDone={load} />}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {[
+          ["all", "Todos"],
+          ["RK1", "RK1"],
+          ["RK2", "RK2"],
+          ["RK3", "RK3"],
+          ["none", "Sem categoria"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={category === key}
+            onClick={() => setCategory(key)}
+            className={clsx(
+              "cut-sm border px-3 py-1.5 text-xs transition-colors",
+              category === key
+                ? "border-red bg-red-soft text-text"
+                : "border-line-strong text-muted hover:text-text",
+            )}
+          >
+            {label} <span className="num text-faint">{countFor(key)}</span>
+          </button>
+        ))}
+        <label className="ml-auto flex items-center gap-2 text-xs text-muted">
+          <input type="checkbox" checked={onlyNoPhoto} onChange={(e) => setOnlyNoPhoto(e.target.checked)} />
+          Só quem está sem foto <span className="num text-red">{noPhoto}</span>
+        </label>
+      </div>
       {message && (
         <div className="mb-4">
           <Notice tone={message.tone}>{message.text}</Notice>
@@ -110,6 +154,11 @@ export default function DriversPage() {
                       <span>
                         {d.name}
                         {d.nickname && <span className="text-muted"> · {d.nickname}</span>}
+                        {!d.photo_url && (
+                          <span className="num ml-2 border border-red/50 px-1 text-[10px] uppercase text-red">
+                            sem foto
+                          </span>
+                        )}
                       </span>
                     </span>
                   </td>

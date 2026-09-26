@@ -132,3 +132,29 @@ def test_preview_survives_storage_failure(season, monkeypatch):
     assert any("auditoria" in i["message"] for i in batch.report["issues"])
     service.confirm(batch, {})
     assert RaceResult.objects.filter(active=True).count() == 332
+
+
+def test_preview_projects_standings_movements(imported):
+    """Prévia mostra quem sobe e quem cai antes de gravar."""
+    leader = Standing.objects.get(category__code="RK1", upto_event=8, position=1).driver
+    # Reenvia a E8 RK1 sem o líder (perde 21 pontos) e com Rodrigo Spetto, que não tinha corrido, em 2º.
+    content = csv_bytes(
+        [
+            [2026, 8, "2026-09-12", "Final", "RK1", 1, "Bárbara Louly", "FIN"],
+            [2026, 8, "2026-09-12", "Final", "RK1", 2, "Rodrigo Spetto", "FIN"],
+        ]
+    )
+    batch = service.preview("e8.csv", content, None)
+    movements = batch.report["movements"]
+    assert movements["compared"] is True
+    by_name = {m["driver"]: m for m in movements["rows"] if m["category"] == "RK1"}
+    spetto = by_name["Rodrigo Spetto"]
+    assert spetto["before_position"] == 3 and spetto["after_position"] == 1 and spetto["change"] == 2
+    assert spetto["after_points"] == spetto["before_points"] + 20
+    assert by_name[leader.name]["before_position"] == 1 and by_name[leader.name]["change"] < 0
+    assert "Bárbara Louly" not in by_name or by_name["Bárbara Louly"]["after_points"] == 133
+
+
+def test_preview_without_changes_has_no_movements(imported):
+    batch = service.preview(WORKBOOK.name, WORKBOOK.read_bytes(), None)
+    assert batch.report["movements"] == {"compared": True, "rows": []}

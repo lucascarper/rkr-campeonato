@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Dashboard, Standings } from "./types";
+import type { Calendar, Dashboard, Standings } from "./types";
 
 const API = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
 
@@ -26,4 +26,8 @@ export function getDashboard(category: string, from?: number | null, to?: number
   if (from) query.set("from", String(from));
   if (to) query.set("to", String(to));
   return get<Dashboard>(`/api/dashboard/?${query}`);
+}
+
+export function getCalendar() {
+  return get<Calendar>("/api/events/");
 }
